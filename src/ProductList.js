@@ -24,9 +24,15 @@ function ProductList() {
         ...doc.data(),
       }));
 
-      // Only show non-archived products
+      // ✅ Only show non-archived products
       const activeProducts = productList.filter((p) => !p.archived);
-      setProducts(activeProducts);
+
+      // 🅰️ Sort alphabetically by name (A → Z)
+      const sortedProducts = activeProducts.sort((a, b) =>
+        a.name.localeCompare(b.name)
+      );
+
+      setProducts(sortedProducts);
     } catch (err) {
       console.error("Error fetching products:", err);
     }
