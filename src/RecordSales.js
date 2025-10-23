@@ -1,13 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { db } from "./firebase";
-import {
-  collection,
-  getDocs,
-  doc,
-  updateDoc,
-  addDoc,
-} from "firebase/firestore";
+import { collection, getDocs, doc, updateDoc, addDoc, serverTimestamp } from "firebase/firestore";
 
 function RecordSales() {
   const [products, setProducts] = useState([]);
@@ -62,32 +56,28 @@ function RecordSales() {
       return;
     }
 
-    const now = new Date().toLocaleString();
-
-    const updatedProduct = {
-      ...product,
-      sold: product.sold + parseInt(quantitySold),
-      total: product.total - parseInt(quantitySold),
-      amount: (product.sold + parseInt(quantitySold)) * product.price,
-      lastUpdated: now,
-    };
+    const qty = parseInt(quantitySold);
 
     try {
       // Update the product in Firebase
       const productRef = doc(db, "products", product.id);
-      await updateDoc(productRef, updatedProduct);
+      await updateDoc(productRef, {
+        sold: (product.sold || 0) + qty,
+        total: (product.total || 0) - qty,
+        amount: ((product.sold || 0) + qty) * product.price,
+        lastUpdated: serverTimestamp(), // ✅ Firestore timestamp
+      });
 
       // Add record to history collection
-      const historyRecord = {
-        date: now,
+      await addDoc(collection(db, "history"), {
+        productId: product.id,
         product: product.name,
         action: "Sale",
-        quantity: parseInt(quantitySold),
+        quantity: qty,
         payment: paymentMethod,
+        date: serverTimestamp(), // ✅ Firestore timestamp
         note: `₦${product.price} each — total ₦${amount}`,
-      };
-
-      await addDoc(collection(db, "history"), historyRecord);
+      });
 
       alert("✅ Sale recorded successfully!");
       setQuantitySold("");
@@ -97,13 +87,10 @@ function RecordSales() {
 
       // Refresh product list
       const refreshed = await getDocs(collection(db, "products"));
-      const updated = refreshed.docs.map((doc) => ({
-        id: doc.id,
-        ...doc.data(),
-      }));
-      setProducts(updated);
+      setProducts(refreshed.docs.map((doc) => ({ id: doc.id, ...doc.data() })));
     } catch (error) {
       console.error("Error updating product:", error);
+      alert("❌ Could not record sale, please try again.");
     }
   };
 

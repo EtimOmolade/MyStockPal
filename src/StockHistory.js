@@ -1,3 +1,4 @@
+// src/StockHistory.js
 import React, { useEffect, useState } from "react";
 import { db } from "./firebase";
 import { collection, getDocs } from "firebase/firestore";
@@ -7,14 +8,15 @@ const StockHistory = () => {
   const [filteredHistory, setFilteredHistory] = useState([]);
   const [products, setProducts] = useState([]);
   const [selectedProduct, setSelectedProduct] = useState("all");
-  const [selectedDate, setSelectedDate] = useState("");
+  const [startDate, setStartDate] = useState("");
+  const [endDate, setEndDate] = useState("");
 
-  // ✅ Load data from Firestore
+  // Fetch data on mount
   useEffect(() => {
     const fetchData = async () => {
       try {
         const historySnap = await getDocs(collection(db, "history"));
-        const historyData = historySnap.docs.map((doc) => ({
+        let historyData = historySnap.docs.map((doc) => ({
           id: doc.id,
           ...doc.data(),
         }));
@@ -25,6 +27,9 @@ const StockHistory = () => {
           ...doc.data(),
         }));
 
+        // Sort newest first
+        historyData.sort((a, b) => getTimestampValue(b.date) - getTimestampValue(a.date));
+
         setHistory(historyData);
         setFilteredHistory(historyData);
         setProducts(productData);
@@ -34,11 +39,74 @@ const StockHistory = () => {
     };
 
     fetchData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // ✅ Filtering logic
+  // Parse Firestore timestamps or various date formats into a Date object
+  const parseToDate = (value) => {
+    if (!value && value !== 0) return null;
+
+    // Firestore Timestamp
+    if (typeof value === "object") {
+      if (value.seconds && typeof value.seconds === "number") {
+        return new Date(value.seconds * 1000 + (value.nanoseconds ? Math.round(value.nanoseconds / 1e6) : 0));
+      }
+      if (typeof value.toDate === "function") return value.toDate();
+      if (value instanceof Date) return value;
+    }
+
+    // Number (ms)
+    if (typeof value === "number") {
+      const d = new Date(value);
+      return isNaN(d.getTime()) ? null : d;
+    }
+
+    // String formats
+    if (typeof value === "string") {
+      const trimmed = value.trim();
+      const parsedMs = Date.parse(trimmed);
+      if (!isNaN(parsedMs)) return new Date(parsedMs);
+
+      // DD/MM/YYYY, HH:MM(:SS)?
+      const dmRegex = /^(\d{1,2})\/(\d{1,2})\/(\d{4})(?:[,\s]+\s*(\d{1,2}):(\d{2})(?::(\d{2}))?)?$/;
+      const m = trimmed.match(dmRegex);
+      if (m) {
+        const day = parseInt(m[1], 10);
+        const month = parseInt(m[2], 10);
+        const year = parseInt(m[3], 10);
+        const hour = m[4] ? parseInt(m[4], 10) : 0;
+        const minute = m[5] ? parseInt(m[5], 10) : 0;
+        const second = m[6] ? parseInt(m[6], 10) : 0;
+        const d = new Date(year, month - 1, day, hour, minute, second);
+        return isNaN(d.getTime()) ? null : d;
+      }
+
+      // DD/MM/YYYY only
+      const dmOnly = /^(\d{1,2})\/(\d{1,2})\/(\d{4})$/.exec(trimmed);
+      if (dmOnly) {
+        const day = parseInt(dmOnly[1], 10);
+        const month = parseInt(dmOnly[2], 10);
+        const year = parseInt(dmOnly[3], 10);
+        const d = new Date(year, month - 1, day);
+        return isNaN(d.getTime()) ? null : d;
+      }
+    }
+
+    return null;
+  };
+
+  const getTimestampValue = (dateValue) => {
+    const d = parseToDate(dateValue);
+    return d ? d.getTime() : 0;
+  };
+
+  const formatDate = (dateValue) => {
+    const d = parseToDate(dateValue);
+    return d ? d.toLocaleString() : "—";
+  };
+
   const handleFilter = () => {
-    let filtered = history;
+    let filtered = [...history];
 
     if (selectedProduct && selectedProduct !== "all") {
       filtered = filtered.filter(
@@ -48,64 +116,30 @@ const StockHistory = () => {
       );
     }
 
-    if (selectedDate) {
+    if (startDate || endDate) {
+      const startTime = startDate ? new Date(startDate).getTime() : -Infinity;
+      const endTime = endDate ? new Date(endDate).getTime() + 24 * 60 * 60 * 1000 - 1 : Infinity;
       filtered = filtered.filter((record) => {
-        if (!record.date) return false;
-
-        // Handle Firestore timestamp
-        if (record.date.seconds) {
-          const recordDate = new Date(record.date.seconds * 1000)
-            .toISOString()
-            .slice(0, 10);
-          return recordDate === selectedDate;
-        }
-
-        // Handle string dates (for older records)
-        const dateStr = record.date.trim();
-        let recordDate = "";
-
-        if (dateStr.includes("T")) {
-          recordDate = new Date(dateStr).toISOString().slice(0, 10);
-        } else if (dateStr.includes("/")) {
-          const [day, month, year] = dateStr.split(",")[0].split("/");
-          if (day && month && year) {
-            recordDate = `${year}-${month.padStart(2, "0")}-${day.padStart(
-              2,
-              "0"
-            )}`;
-          }
-        }
-
-        return recordDate === selectedDate;
+        const ts = getTimestampValue(record.date);
+        return ts && ts >= startTime && ts <= endTime;
       });
     }
 
+    filtered.sort((a, b) => getTimestampValue(b.date) - getTimestampValue(a.date));
     setFilteredHistory(filtered);
   };
 
-  // ✅ Reset filters
   const resetFilters = () => {
     setSelectedProduct("all");
-    setSelectedDate("");
-    setFilteredHistory(history);
-  };
-
-  // ✅ Helper to show date nicely
-  const formatDate = (date) => {
-    if (!date) return "—";
-    if (date.seconds) {
-      // Firestore Timestamp → readable date
-      return new Date(date.seconds * 1000).toLocaleString();
-    }
-    // fallback if it's a string
-    return date;
+    setStartDate("");
+    setEndDate("");
+    setFilteredHistory([...history]);
   };
 
   return (
     <div className="table-container">
       <h2>📜 Stock History</h2>
 
-      {/* Filter Section */}
       <div className="filter-container">
         <select
           value={selectedProduct}
@@ -121,8 +155,16 @@ const StockHistory = () => {
 
         <input
           type="date"
-          value={selectedDate}
-          onChange={(e) => setSelectedDate(e.target.value)}
+          value={startDate}
+          onChange={(e) => setStartDate(e.target.value)}
+          placeholder="Start Date"
+        />
+
+        <input
+          type="date"
+          value={endDate}
+          onChange={(e) => setEndDate(e.target.value)}
+          placeholder="End Date"
         />
 
         <button onClick={handleFilter} className="filter-button">
@@ -133,7 +175,6 @@ const StockHistory = () => {
         </button>
       </div>
 
-      {/* Table Display */}
       {filteredHistory.length === 0 ? (
         <p>No matching records found.</p>
       ) : (
@@ -154,7 +195,7 @@ const StockHistory = () => {
                 <td>{formatDate(record.date)}</td>
                 <td>{record.product || record.productName || "—"}</td>
                 <td>{record.action || "—"}</td>
-                <td>{record.quantity || 0}</td>
+                <td>{record.quantity ?? 0}</td>
                 <td>{record.payment || "—"}</td>
                 <td>{record.note || record.details || "—"}</td>
               </tr>

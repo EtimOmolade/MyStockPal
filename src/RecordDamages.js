@@ -1,20 +1,14 @@
 import React, { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
-import {
-  collection,
-  getDocs,
-  updateDoc,
-  doc,
-  addDoc,
-} from "firebase/firestore";
-import { db } from "./firebase"; // ✅ import Firestore instance
+import { db } from "./firebase";
+import { collection, getDocs, updateDoc, doc, addDoc, serverTimestamp } from "firebase/firestore";
 
 function RecordDamages() {
   const [products, setProducts] = useState([]);
   const [selectedProductId, setSelectedProductId] = useState("");
   const [damagedQty, setDamagedQty] = useState("");
 
-  // ✅ Fetch products from Firestore
+  // Fetch products from Firestore
   useEffect(() => {
     fetchProducts();
   }, []);
@@ -32,7 +26,7 @@ function RecordDamages() {
     }
   };
 
-  // ✅ Record damaged products
+  // Record damaged products
   const handleSubmit = async (e) => {
     e.preventDefault();
 
@@ -52,27 +46,25 @@ function RecordDamages() {
       return;
     }
 
-    const now = new Date().toLocaleString();
-
-    const updatedProduct = {
-      ...product,
-      damaged: (product.damaged || 0) + parseInt(damagedQty),
-      total: product.total - parseInt(damagedQty),
-      lastUpdated: now,
-    };
+    const qty = parseInt(damagedQty);
 
     try {
-      // ✅ Update product in Firestore
+      // Update product in Firestore
       const productRef = doc(db, "products", selectedProductId);
-      await updateDoc(productRef, updatedProduct);
+      await updateDoc(productRef, {
+        damaged: (product.damaged || 0) + qty,
+        total: (product.total || 0) - qty,
+        lastUpdated: serverTimestamp(), // ✅ Firestore timestamp
+      });
 
-      // ✅ Record history in Firestore
+      // Record history in Firestore
       await addDoc(collection(db, "history"), {
-        date: now,
+        productId: product.id,
         product: product.name,
         action: "Damage",
-        quantity: parseInt(damagedQty),
-        note: `Damaged quantity: ${damagedQty}`,
+        quantity: qty,
+        date: serverTimestamp(), // ✅ Firestore timestamp
+        note: `Damaged quantity: ${qty}`,
       });
 
       alert("✅ Damage recorded successfully!");

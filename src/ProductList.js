@@ -1,3 +1,4 @@
+// src/ProductList.js
 import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import {
@@ -5,17 +6,20 @@ import {
   getDocs,
   doc,
   updateDoc,
+  serverTimestamp,
+  addDoc,
 } from "firebase/firestore";
-import { db } from "./firebase"; // ✅ make sure firebase.js is set up
+import { db } from "./firebase";
 
 function ProductList() {
   const [products, setProducts] = useState([]);
+  const [updateQty, setUpdateQty] = useState({}); // store qty input for each product
 
-  // ✅ Fetch products from Firestore
   useEffect(() => {
     fetchProducts();
   }, []);
 
+  // Fetch products from Firestore
   const fetchProducts = async () => {
     try {
       const querySnapshot = await getDocs(collection(db, "products"));
@@ -24,10 +28,7 @@ function ProductList() {
         ...doc.data(),
       }));
 
-      // ✅ Only show non-archived products
       const activeProducts = productList.filter((p) => !p.archived);
-
-      // 🅰️ Sort alphabetically by name (A → Z)
       const sortedProducts = activeProducts.sort((a, b) =>
         a.name.localeCompare(b.name)
       );
@@ -38,7 +39,7 @@ function ProductList() {
     }
   };
 
-  // ✅ Archive or Unarchive product
+  // Archive / Unarchive product
   const handleArchive = async (id, currentStatus) => {
     const confirmMsg = currentStatus
       ? "Unarchive this product?"
@@ -48,11 +49,76 @@ function ProductList() {
       try {
         const productRef = doc(db, "products", id);
         await updateDoc(productRef, { archived: !currentStatus });
-        fetchProducts(); // refresh list
+        fetchProducts();
       } catch (error) {
         console.error("Error updating archive status:", error);
       }
     }
+  };
+
+  // Update stock quantity
+  const handleUpdateStock = async (productId, productName) => {
+    const qty = parseInt(updateQty[productId]);
+    if (isNaN(qty) || qty === 0) {
+      alert("Please enter a valid quantity.");
+      return;
+    }
+
+    try {
+      const productRef = doc(db, "products", productId);
+
+      const product = products.find((p) => p.id === productId);
+      if (!product) return;
+
+      // Update total stock
+      await updateDoc(productRef, {
+        total: (product.total || 0) + qty,
+        lastUpdated: serverTimestamp(),
+      });
+
+      // Record in history
+      await addDoc(collection(db, "history"), {
+        productId,
+        product: productName,
+        quantity: qty,
+        action: qty > 0 ? "Stock Added" : "Stock Removed",
+        date: serverTimestamp(),
+        note: qty > 0 ? `Added ${qty} units` : `Removed ${Math.abs(qty)} units`,
+      });
+
+      setUpdateQty({ ...updateQty, [productId]: "" });
+      fetchProducts();
+      alert("✅ Stock updated successfully!");
+    } catch (error) {
+      console.error("Error updating stock:", error);
+      alert("❌ Could not update stock.");
+    }
+  };
+
+  // Format Firestore timestamps for display
+  const formatTimestamp = (ts) => {
+    if (!ts) return "—";
+
+    // Firestore timestamp object
+    if (ts.seconds && typeof ts.seconds === "number") {
+      const d = new Date(
+        ts.seconds * 1000 + (ts.nanoseconds ? Math.round(ts.nanoseconds / 1e6) : 0)
+      );
+      return d.toLocaleString();
+    }
+
+    // Timestamp with toDate()
+    if (typeof ts.toDate === "function") {
+      try {
+        return ts.toDate().toLocaleString();
+      } catch {
+        return "—";
+      }
+    }
+
+    // Already a Date object or string
+    const d = new Date(ts);
+    return isNaN(d.getTime()) ? "—" : d.toLocaleString();
   };
 
   return (
@@ -74,6 +140,7 @@ function ProductList() {
               <th>Amount</th>
               <th>Date Added</th>
               <th>Last Updated</th>
+              <th>Update Stock</th>
               <th>Actions</th>
             </tr>
           </thead>
@@ -89,8 +156,25 @@ function ProductList() {
                   <td>{remaining < 0 ? 0 : remaining}</td>
                   <td>₦{p.price}</td>
                   <td>₦{p.amount?.toLocaleString()}</td>
-                  <td>{p.dateAdded || "—"}</td>
-                  <td>{p.lastUpdated || "—"}</td>
+                  <td>{formatTimestamp(p.dateAdded)}</td>
+                  <td>{formatTimestamp(p.lastUpdated)}</td>
+                  <td>
+                    <input
+                      type="number"
+                      placeholder="Qty"
+                      value={updateQty[p.id] || ""}
+                      onChange={(e) =>
+                        setUpdateQty({ ...updateQty, [p.id]: e.target.value })
+                      }
+                      style={{ width: "80px" }}
+                    />
+                    <button
+                      onClick={() => handleUpdateStock(p.id, p.name)}
+                      style={{ marginLeft: "5px", padding: "5px 10px" }}
+                    >
+                      Update
+                    </button>
+                  </td>
                   <td>
                     <Link to={`/edit/${p.id}`}>
                       <button className="edit-btn">Edit</button>

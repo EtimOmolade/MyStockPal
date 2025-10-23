@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { doc, getDoc, updateDoc, collection, addDoc } from "firebase/firestore";
+import { doc, getDoc, updateDoc, collection, addDoc, serverTimestamp } from "firebase/firestore";
 import { db } from "./firebase";
 
 const EditProduct = () => {
@@ -15,7 +15,7 @@ const EditProduct = () => {
     amount: 0,
   });
 
-  // ✅ Fetch product from Firestore
+  // Fetch product from Firestore
   useEffect(() => {
     const fetchProduct = async () => {
       try {
@@ -35,12 +35,10 @@ const EditProduct = () => {
     fetchProduct();
   }, [id]);
 
-  // ✅ Handle form input
   const handleChange = (e) => {
     setProduct({ ...product, [e.target.name]: e.target.value });
   };
 
-  // ✅ Save changes and record history
   const handleSubmit = async (e) => {
     e.preventDefault();
 
@@ -49,21 +47,20 @@ const EditProduct = () => {
       total: parseInt(product.total),
       price: parseFloat(product.price),
       amount: (product.sold || 0) * parseFloat(product.price),
-      lastUpdated: new Date().toLocaleString(),
+      lastUpdated: serverTimestamp(), // ✅ Use Firestore timestamp
     };
 
     try {
-      // ✅ Update product in Firestore
       const docRef = doc(db, "products", id);
       await updateDoc(docRef, updatedProduct);
 
-      // ✅ Add to history collection
       await addDoc(collection(db, "history"), {
-        date: new Date().toLocaleString(),
+        productId: id,
         product: updatedProduct.name,
         action: "Edited Product",
         quantity: updatedProduct.total,
         payment: "—",
+        date: serverTimestamp(), // ✅ Use Firestore timestamp
         note: `Price updated to ₦${updatedProduct.price}`,
       });
 

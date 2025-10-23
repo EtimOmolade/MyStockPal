@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { Link } from "react-router-dom";
-import { db } from "./firebase"; // ✅ import your Firebase config
+import { db } from "./firebase";
 import { collection, addDoc, serverTimestamp } from "firebase/firestore";
 
 const AddProduct = () => {
@@ -22,10 +22,6 @@ const AddProduct = () => {
       return;
     }
 
-    const now = new Date();
-    const formattedDate = now.toLocaleDateString();
-    const formattedTime = now.toLocaleTimeString();
-
     const newProduct = {
       name: product.name,
       total: parseInt(product.total),
@@ -33,21 +29,21 @@ const AddProduct = () => {
       sold: 0,
       damaged: 0,
       amount: 0,
-      dateAdded: `${formattedDate} ${formattedTime}`,
-      timestamp: serverTimestamp(), // ✅ Use Firebase server time
+      dateAdded: serverTimestamp(),   // ✅ Use Firestore timestamp
+      lastUpdated: serverTimestamp(), // optional, same as dateAdded initially
     };
 
     try {
-      // ✅ Add product to Firestore
+      // Add product to Firestore
       const productRef = await addDoc(collection(db, "products"), newProduct);
 
-      // ✅ Record in stock history
+      // Record in stock history
       await addDoc(collection(db, "history"), {
         productId: productRef.id,
         product: product.name,
-        quantity: product.total,
+        quantity: parseInt(product.total),
         action: "Stock Added",
-        date: serverTimestamp(),
+        date: serverTimestamp(), // Firestore timestamp
         note: `Added ${product.total} units at ₦${product.price} each`,
       });
 
@@ -84,7 +80,7 @@ const AddProduct = () => {
           required
         />
 
-        <label>Price per Unit:</label>
+        <label>Price per Unit (₦):</label>
         <input
           type="number"
           name="price"
@@ -100,7 +96,7 @@ const AddProduct = () => {
       </form>
 
       <div style={{ marginTop: "20px", textAlign: "center" }}>
-        <Link to="/" className="btn-secondary">
+        <Link to="/">
           <button className="btn-primary" style={{ marginTop: "10px" }}>
             ⬅ Back to Products
           </button>
