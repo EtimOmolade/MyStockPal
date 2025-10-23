@@ -1,0 +1,337 @@
+{
+  "products": [
+    {
+      "id": "45e3",
+      "name": "FANICE STRAWBERRY",
+      "total": 144,
+      "price": 400,
+      "sold": 9,
+      "damaged": 2,
+      "amount": 3600,
+      "dateAdded": "21/10/2025 17:06:11",
+      "lastUpdated": "22/10/2025, 11:58:02",
+      "archived": false
+    },
+    {
+      "id": "a6d0",
+      "name": "FANICE",
+      "total": 200,
+      "price": 400,
+      "sold": 0,
+      "damaged": 0,
+      "amount": 0,
+      "dateAdded": "21/10/2025 17:08:54",
+      "lastUpdated": "21/10/2025, 17:13:38",
+      "archived": false
+    },
+    {
+      "id": "faa0",
+      "name": "BIG SUPERYOGO",
+      "total": 47,
+      "price": 400,
+      "sold": 3,
+      "damaged": 0,
+      "amount": 1200,
+      "dateAdded": "21/10/2025 17:09:18",
+      "lastUpdated": "21/10/2025, 22:12:31",
+      "archived": false
+    },
+    {
+      "id": "2b55",
+      "name": "SMALL SUPERYOGO",
+      "total": 48,
+      "price": 200,
+      "sold": 2,
+      "damaged": 0,
+      "amount": 400,
+      "dateAdded": "21/10/2025 17:09:44",
+      "archived": false,
+      "lastUpdated": "22/10/2025, 11:56:24"
+    },
+    {
+      "id": "c322",
+      "name": "BIG FANVANILLE",
+      "total": 50,
+      "price": 400,
+      "sold": 0,
+      "damaged": 0,
+      "amount": 0,
+      "dateAdded": "21/10/2025 17:10:38",
+      "archived": false
+    },
+    {
+      "id": "cb22",
+      "name": "SMALL FANVANILLE",
+      "total": 100,
+      "price": 200,
+      "sold": 0,
+      "damaged": 0,
+      "amount": 0,
+      "dateAdded": "21/10/2025 17:11:38",
+      "archived": false
+    },
+    {
+      "id": "b69e",
+      "name": "FANYOGO PLAIN",
+      "total": 497,
+      "price": 600,
+      "sold": 3,
+      "damaged": 0,
+      "amount": 1800,
+      "dateAdded": "21/10/2025 17:12:17",
+      "lastUpdated": "22/10/2025, 08:42:29",
+      "archived": false
+    },
+    {
+      "id": "8b16",
+      "name": "FANYOGO STRAWBERRY",
+      "total": 200,
+      "price": 600,
+      "sold": 0,
+      "damaged": 0,
+      "amount": 0,
+      "dateAdded": "21/10/2025 17:12:50",
+      "archived": true
+    },
+    {
+      "id": "40b9",
+      "name": "FANICE STRAWBERRY",
+      "total": 5,
+      "price": 500,
+      "sold": 0,
+      "damaged": 0,
+      "amount": 0,
+      "dateAdded": "22/10/2025 13:01:52"
+    }
+  ],
+  "sales": [],
+  "damages": [],
+  "history": [
+    {
+      "id": "4202",
+      "product": "FANICE STRAWBERRY",
+      "quantity": "100",
+      "action": "Stock Added",
+      "date": "2025-10-21T14:28:13.008Z",
+      "note": "Added 100 units at ₦400 each"
+    },
+    {
+      "id": "29a6",
+      "product": "FANICE ",
+      "quantity": "50",
+      "action": "Stock Added",
+      "date": "2025-10-21T14:43:52.887Z",
+      "note": "Added 50 units at ₦400 each"
+    },
+    {
+      "id": "15bc",
+      "date": "21/10/2025, 15:10:48",
+      "product": "SUPERYOGO",
+      "action": "Sale",
+      "quantity": "4",
+      "payment": "transfer",
+      "note": "Sold 4 unit(s) of SUPERYOGO via transfer"
+    },
+    {
+      "id": "0128",
+      "date": "21/10/2025, 15:16:40",
+      "product": "SUPERYOGO",
+      "action": "Sale",
+      "quantity": 2,
+      "payment": "cash",
+      "note": "₦400 each — total ₦800"
+    },
+    {
+      "id": "f00a",
+      "date": "21/10/2025, 15:17:53",
+      "product": "CUP",
+      "action": "Damage",
+      "quantity": 2,
+      "payment": "—",
+      "note": "Damaged product recorded"
+    },
+    {
+      "id": "8f97",
+      "action": "Edited product",
+      "productName": "SUPERYOGO",
+      "date": "21/10/2025, 16:36:37",
+      "details": "Total: 150, Price: ₦400"
+    },
+    {
+      "id": "e372",
+      "product": "yy",
+      "quantity": "2",
+      "action": "Stock Added",
+      "date": "2025-10-21T16:42:30.710Z",
+      "note": "Added 2 units at ₦1 each"
+    },
+    {
+      "id": "cfcd",
+      "action": "Edited product",
+      "productName": "FANICE ",
+      "date": "21/10/2025, 16:47:46",
+      "details": "Total: 100, Price: ₦400"
+    },
+    {
+      "id": "3f4b",
+      "date": "21/10/2025, 16:48:26",
+      "product": "FANICE STRAWBERRY",
+      "action": "Sale",
+      "quantity": 3,
+      "payment": "transfer",
+      "note": "₦400 each — total ₦1200"
+    },
+    {
+      "id": "557e",
+      "date": "21/10/2025, 16:53:00",
+      "product": "yy",
+      "action": "Sale",
+      "quantity": 1,
+      "payment": "cash",
+      "note": "₦1 each — total ₦1"
+    },
+    {
+      "id": "3366",
+      "date": "21/10/2025, 16:55:38",
+      "product": "yy",
+      "action": "Damage",
+      "quantity": 1,
+      "note": "Damaged quantity: 1"
+    },
+    {
+      "id": "3906",
+      "product": "FANICE STRAWBERRY",
+      "quantity": "100",
+      "action": "Stock Added",
+      "date": "2025-10-21T17:06:11.892Z",
+      "note": "Added 100 units at ₦400 each"
+    },
+    {
+      "id": "e830",
+      "date": "21/10/2025, 17:06:37",
+      "product": "FANICE STRAWBERRY",
+      "action": "Sale",
+      "quantity": 3,
+      "payment": "cash",
+      "note": "₦400 each — total ₦1200"
+    },
+    {
+      "id": "730f",
+      "date": "21/10/2025, 17:06:58",
+      "product": "FANICE STRAWBERRY",
+      "action": "Damage",
+      "quantity": 2,
+      "note": "Damaged quantity: 2"
+    },
+    {
+      "id": "9ff0",
+      "date": "21/10/2025, 17:08:04",
+      "product": "FANICE STRAWBERRY",
+      "action": "Edited Product",
+      "quantity": 150,
+      "payment": "—",
+      "note": "Price updated to ₦400"
+    },
+    {
+      "id": "06c1",
+      "product": "FANICE",
+      "quantity": "100",
+      "action": "Stock Added",
+      "date": "2025-10-21T17:08:54.821Z",
+      "note": "Added 100 units at ₦400 each"
+    },
+    {
+      "id": "2326",
+      "product": "BIG SUPERYOGO",
+      "quantity": "50",
+      "action": "Stock Added",
+      "date": "2025-10-21T17:09:18.498Z",
+      "note": "Added 50 units at ₦400 each"
+    },
+    {
+      "id": "1e51",
+      "product": "SMALL SUPERYOGO",
+      "quantity": "50",
+      "action": "Stock Added",
+      "date": "2025-10-21T17:09:44.249Z",
+      "note": "Added 50 units at ₦200 each"
+    },
+    {
+      "id": "33de",
+      "product": "SMALL FANVANILLE",
+      "quantity": "100",
+      "action": "Stock Added",
+      "date": "2025-10-21T17:11:38.643Z",
+      "note": "Added 100 units at ₦200 each"
+    },
+    {
+      "id": "da22",
+      "product": "FANYOGO PLAIN",
+      "quantity": "500",
+      "action": "Stock Added",
+      "date": "2025-10-21T17:12:17.443Z",
+      "note": "Added 500 units at ₦600 each"
+    },
+    {
+      "id": "7582",
+      "product": "FANYOGO STRAWBERRY",
+      "quantity": "200",
+      "action": "Stock Added",
+      "date": "2025-10-21T17:12:50.356Z",
+      "note": "Added 200 units at ₦600 each"
+    },
+    {
+      "id": "2d9e",
+      "date": "21/10/2025, 17:13:38",
+      "product": "FANICE",
+      "action": "Edited Product",
+      "quantity": 200,
+      "payment": "—",
+      "note": "Price updated to ₦400"
+    },
+    {
+      "id": "1e05",
+      "date": "21/10/2025, 22:12:31",
+      "product": "BIG SUPERYOGO",
+      "action": "Sale",
+      "quantity": 3,
+      "payment": "transfer",
+      "note": "₦400 each — total ₦1200"
+    },
+    {
+      "id": "4826",
+      "date": "22/10/2025, 08:42:29",
+      "product": "FANYOGO PLAIN",
+      "action": "Sale",
+      "quantity": 3,
+      "payment": "cash",
+      "note": "₦600 each — total ₦1800"
+    },
+    {
+      "id": "e126",
+      "date": "22/10/2025, 11:56:24",
+      "product": "SMALL SUPERYOGO",
+      "action": "Sale",
+      "quantity": 2,
+      "payment": "transfer",
+      "note": "₦200 each — total ₦400"
+    },
+    {
+      "id": "bbbc",
+      "date": "22/10/2025, 11:58:02",
+      "product": "FANICE STRAWBERRY",
+      "action": "Sale",
+      "quantity": 3,
+      "payment": "transfer",
+      "note": "₦400 each — total ₦1200"
+    },
+    {
+      "id": "28b1",
+      "product": "FANICE STRAWBERRY",
+      "quantity": "5",
+      "action": "Stock Added",
+      "date": "2025-10-22T13:01:52.780Z",
+      "note": "Added 5 units at ₦500 each"
+    }
+  ]
+}
