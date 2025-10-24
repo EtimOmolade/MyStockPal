@@ -1,16 +1,24 @@
 import React, { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { db } from "./firebase";
-import { collection, getDocs, doc, updateDoc, addDoc, serverTimestamp } from "firebase/firestore";
+import {
+  collection,
+  getDocs,
+  doc,
+  updateDoc,
+  addDoc,
+  serverTimestamp,
+} from "firebase/firestore";
 
 function RecordSales() {
   const [products, setProducts] = useState([]);
   const [selectedProduct, setSelectedProduct] = useState("");
   const [quantitySold, setQuantitySold] = useState("");
+  const [saleType, setSaleType] = useState("unit"); // ✅ "unit" or "pack"
   const [paymentMethod, setPaymentMethod] = useState("");
   const [amount, setAmount] = useState("");
 
-  // Fetch products from Firebase
+  // ✅ Fetch products
   useEffect(() => {
     const fetchProducts = async () => {
       try {
@@ -27,15 +35,19 @@ function RecordSales() {
     fetchProducts();
   }, []);
 
-  // Auto-calculate amount
+  // ✅ Auto-calculate amount when inputs change
   useEffect(() => {
     const product = products.find((p) => p.name === selectedProduct);
     if (product && quantitySold) {
-      setAmount(product.price * quantitySold);
+      const qty =
+        saleType === "pack"
+          ? quantitySold * (product.itemsPerPack || 1)
+          : parseInt(quantitySold, 10);
+      setAmount(product.price * qty);
     } else {
       setAmount("");
     }
-  }, [selectedProduct, quantitySold, products]);
+  }, [selectedProduct, quantitySold, saleType, products]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -51,52 +63,61 @@ function RecordSales() {
       return;
     }
 
-    if (quantitySold > product.total) {
+    const qty =
+      saleType === "pack"
+        ? quantitySold * (product.itemsPerPack || 1)
+        : parseInt(quantitySold, 10);
+
+    if (qty > product.total) {
       alert("❌ Not enough stock available!");
       return;
     }
 
-    const qty = parseInt(quantitySold);
-
     try {
-      // Update the product in Firebase
+      // 🔹 Update product stock
       const productRef = doc(db, "products", product.id);
       await updateDoc(productRef, {
-        sold: (product.sold || 0) + qty,
         total: (product.total || 0) - qty,
-        amount: ((product.sold || 0) + qty) * product.price,
-        lastUpdated: serverTimestamp(), // ✅ Firestore timestamp
+        sold: (product.sold || 0) + qty,
+        lastUpdated: serverTimestamp(),
       });
 
-      // Add record to history collection
+      // 🔹 Add record to history
       await addDoc(collection(db, "history"), {
         productId: product.id,
         product: product.name,
-        action: "Sale",
         quantity: qty,
+        saleType,
+        action: "Sold",
         payment: paymentMethod,
-        date: serverTimestamp(), // ✅ Firestore timestamp
-        note: `₦${product.price} each — total ₦${amount}`,
+        date: serverTimestamp(),
+        note:
+          saleType === "pack"
+            ? `${quantitySold} pack(s) (${qty} units) sold at ₦${product.price} each`
+            : `${qty} single unit(s) sold at ₦${product.price} each`,
       });
 
       alert("✅ Sale recorded successfully!");
+
+      // 🔄 Reset form
       setQuantitySold("");
       setSelectedProduct("");
       setPaymentMethod("");
+      setSaleType("unit");
       setAmount("");
 
-      // Refresh product list
+      // 🔄 Refresh product list
       const refreshed = await getDocs(collection(db, "products"));
       setProducts(refreshed.docs.map((doc) => ({ id: doc.id, ...doc.data() })));
     } catch (error) {
-      console.error("Error updating product:", error);
+      console.error("Error recording sale:", error);
       alert("❌ Could not record sale, please try again.");
     }
   };
 
   return (
     <div className="form-container">
-      <h2>Record Sales</h2>
+      <h2>🛒 Record Sales</h2>
 
       <form onSubmit={handleSubmit}>
         <label>Select Product:</label>
@@ -113,12 +134,23 @@ function RecordSales() {
           ))}
         </select>
 
-        <label>Quantity Sold:</label>
+        <label>Sale Type:</label>
+        <select
+          value={saleType}
+          onChange={(e) => setSaleType(e.target.value)}
+          required
+        >
+          <option value="unit">Single Unit</option>
+          <option value="pack">Pack</option>
+        </select>
+
+        <label>Quantity Sold ({saleType === "pack" ? "Packs" : "Units"}):</label>
         <input
           type="number"
           value={quantitySold}
           onChange={(e) => setQuantitySold(e.target.value)}
           required
+          min="1"
         />
 
         <label>Payment Method:</label>
@@ -134,7 +166,7 @@ function RecordSales() {
         </select>
 
         <label>Amount:</label>
-        <input type="text" value={amount} readOnly />
+        <input type="text" value={amount ? `₦${amount}` : ""} readOnly />
 
         <button type="submit" className="btn-primary">
           Record Sale

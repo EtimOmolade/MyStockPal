@@ -8,47 +8,69 @@ const AddProduct = () => {
     name: "",
     total: "",
     price: "",
+    itemsPerPack: "", // ✅ new field
+    hasPack: false, // ✅ to know if the product has packs
   });
 
   const handleChange = (e) => {
-    setProduct({ ...product, [e.target.name]: e.target.value });
+    const { name, value, type, checked } = e.target;
+    setProduct({
+      ...product,
+      [name]: type === "checkbox" ? checked : value,
+    });
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
 
     if (!product.name || !product.total || !product.price) {
-      alert("Please fill in all fields!");
+      alert("Please fill in all required fields!");
       return;
     }
 
+    // ✅ Parse numeric values safely
+    const totalQty = parseInt(product.total, 10);
+    const unitPrice = parseFloat(product.price);
+    const itemsPerPack = product.hasPack
+      ? parseInt(product.itemsPerPack || 1, 10)
+      : null;
+
     const newProduct = {
-      name: product.name,
-      total: parseInt(product.total),
-      price: parseFloat(product.price),
+      name: product.name.trim(),
+      total: totalQty,
+      price: unitPrice,
       sold: 0,
       damaged: 0,
       amount: 0,
-      dateAdded: serverTimestamp(),   // ✅ Use Firestore timestamp
-      lastUpdated: serverTimestamp(), // optional, same as dateAdded initially
+      hasPack: product.hasPack,
+      itemsPerPack: itemsPerPack,
+      dateAdded: serverTimestamp(),
+      lastUpdated: serverTimestamp(),
     };
 
     try {
-      // Add product to Firestore
+      // 🔹 Add product to Firestore
       const productRef = await addDoc(collection(db, "products"), newProduct);
 
-      // Record in stock history
+      // 🔹 Record in stock history
       await addDoc(collection(db, "history"), {
         productId: productRef.id,
         product: product.name,
-        quantity: parseInt(product.total),
+        quantity: totalQty,
         action: "Stock Added",
-        date: serverTimestamp(), // Firestore timestamp
-        note: `Added ${product.total} units at ₦${product.price} each`,
+        date: serverTimestamp(),
+        note: `Added ${totalQty} units${product.hasPack ? ` (${itemsPerPack} per pack)` : ""
+          } at ₦${unitPrice} each`,
       });
 
       alert("✅ Product added and recorded successfully!");
-      setProduct({ name: "", total: "", price: "" });
+      setProduct({
+        name: "",
+        total: "",
+        price: "",
+        itemsPerPack: "",
+        hasPack: false,
+      });
     } catch (error) {
       console.error("Error adding product:", error);
       alert("❌ Could not add product, please try again.");
@@ -57,9 +79,10 @@ const AddProduct = () => {
 
   return (
     <div className="form-container">
-      <h2>Add New Product</h2>
+      <h2>➕ Add New Product</h2>
 
       <form onSubmit={handleSubmit}>
+        {/* Product Name */}
         <label>Product Name:</label>
         <input
           type="text"
@@ -70,6 +93,7 @@ const AddProduct = () => {
           required
         />
 
+        {/* Total Quantity */}
         <label>Total Quantity:</label>
         <input
           type="number"
@@ -80,6 +104,7 @@ const AddProduct = () => {
           required
         />
 
+        {/* Price */}
         <label>Price per Unit (₦):</label>
         <input
           type="number"
@@ -89,6 +114,33 @@ const AddProduct = () => {
           placeholder="Enter price per unit"
           required
         />
+
+        {/* Pack Option */}
+        <div className="checkbox-group">
+          <input
+            type="checkbox"
+            id="hasPack"
+            name="hasPack"
+            checked={product.hasPack}
+            onChange={handleChange}
+          />
+          <label htmlFor="hasPack">This product is sold in packs</label>
+        </div>
+
+        {/* Items per Pack (show only if checkbox is checked) */}
+        {product.hasPack && (
+          <>
+            <label>Number of Items per Pack:</label>
+            <input
+              type="number"
+              name="itemsPerPack"
+              value={product.itemsPerPack}
+              onChange={handleChange}
+              placeholder="Enter number of items in a pack"
+              required
+            />
+          </>
+        )}
 
         <button type="submit" className="btn-primary">
           Add Product

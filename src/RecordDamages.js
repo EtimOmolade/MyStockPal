@@ -1,14 +1,24 @@
 import React, { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { db } from "./firebase";
-import { collection, getDocs, updateDoc, doc, addDoc, serverTimestamp } from "firebase/firestore";
+import {
+  collection,
+  getDocs,
+  updateDoc,
+  doc,
+  addDoc,
+  serverTimestamp,
+  getDoc,
+} from "firebase/firestore";
 
 function RecordDamages() {
   const [products, setProducts] = useState([]);
   const [selectedProductId, setSelectedProductId] = useState("");
+  const [quantityType, setQuantityType] = useState("unit"); // "unit" or "pack"
   const [damagedQty, setDamagedQty] = useState("");
+  const [loading, setLoading] = useState(false);
 
-  // Fetch products from Firestore
+  // ✅ Fetch all products when component mounts
   useEffect(() => {
     fetchProducts();
   }, []);
@@ -22,64 +32,87 @@ function RecordDamages() {
       }));
       setProducts(productList);
     } catch (error) {
-      console.error("Error fetching products:", error);
+      console.error("🔥 Error fetching products:", error);
     }
   };
 
-  // Record damaged products
   const handleSubmit = async (e) => {
     e.preventDefault();
 
     if (!selectedProductId || !damagedQty) {
-      alert("Please fill in all fields!");
+      alert("⚠️ Please fill in all fields!");
       return;
     }
 
     const product = products.find((p) => p.id === selectedProductId);
     if (!product) {
-      alert("Product not found!");
+      alert("❌ Product not found!");
       return;
     }
 
-    if (parseInt(damagedQty) > product.total) {
+    let qty = parseInt(damagedQty, 10);
+    if (isNaN(qty) || qty <= 0) {
+      alert("⚠️ Enter a valid quantity!");
+      return;
+    }
+
+    // ✅ Convert packs to units
+    if (quantityType === "pack" && product.itemsPerPack) {
+      qty *= product.itemsPerPack;
+    }
+
+    if (qty > product.total) {
       alert("❌ Quantity exceeds available stock!");
       return;
     }
 
-    const qty = parseInt(damagedQty);
+    setLoading(true);
 
     try {
-      // Update product in Firestore
       const productRef = doc(db, "products", selectedProductId);
-      await updateDoc(productRef, {
-        damaged: (product.damaged || 0) + qty,
-        total: (product.total || 0) - qty,
-        lastUpdated: serverTimestamp(), // ✅ Firestore timestamp
-      });
+      const productSnap = await getDoc(productRef);
 
-      // Record history in Firestore
-      await addDoc(collection(db, "history"), {
-        productId: product.id,
-        product: product.name,
-        action: "Damage",
-        quantity: qty,
-        date: serverTimestamp(), // ✅ Firestore timestamp
-        note: `Damaged quantity: ${qty}`,
-      });
+      if (productSnap.exists()) {
+        const currentData = productSnap.data();
 
-      alert("✅ Damage recorded successfully!");
-      setDamagedQty("");
-      setSelectedProductId("");
-      fetchProducts(); // refresh list
+        // ✅ Update Firestore product
+        await updateDoc(productRef, {
+          damaged: (currentData.damaged || 0) + qty,
+          total: (currentData.total || 0) - qty,
+          lastUpdated: serverTimestamp(),
+        });
+
+        // ✅ Record action in history
+        await addDoc(collection(db, "history"), {
+          productId: selectedProductId,
+          product: currentData.name,
+          action: "Damaged",
+          quantity: qty,
+          date: serverTimestamp(),
+          note: `🧯 Damaged ${qty} ${quantityType}(s)`,
+        });
+
+        alert(`✅ ${qty} ${quantityType}(s) recorded as damaged for ${currentData.name}`);
+        setDamagedQty("");
+        setSelectedProductId("");
+        setQuantityType("unit");
+
+        // ✅ Refresh product list
+        await fetchProducts();
+      } else {
+        alert("❌ Product no longer exists in database.");
+      }
     } catch (error) {
-      console.error("Error updating product:", error);
-      alert("❌ Failed to record damage");
+      console.error("🔥 Error recording damage:", error);
+      alert("❌ Failed to record damage. Try again.");
+    } finally {
+      setLoading(false);
     }
   };
 
   return (
     <div className="form-container">
-      <h2>Record Damaged Products</h2>
+      <h2>🧯 Record Damaged Products</h2>
 
       <form onSubmit={handleSubmit}>
         <label>Select Product:</label>
@@ -96,16 +129,41 @@ function RecordDamages() {
           ))}
         </select>
 
+        <label>Quantity Type:</label>
+        <div className="radio-group">
+          <label>
+            <input
+              type="radio"
+              name="quantityType"
+              value="unit"
+              checked={quantityType === "unit"}
+              onChange={() => setQuantityType("unit")}
+            />{" "}
+            Unit
+          </label>
+          <label>
+            <input
+              type="radio"
+              name="quantityType"
+              value="pack"
+              checked={quantityType === "pack"}
+              onChange={() => setQuantityType("pack")}
+            />{" "}
+            Pack
+          </label>
+        </div>
+
         <label>Quantity Damaged:</label>
         <input
           type="number"
           value={damagedQty}
           onChange={(e) => setDamagedQty(e.target.value)}
           required
+          min="1"
         />
 
-        <button type="submit" className="btn-primary">
-          Record Damage
+        <button type="submit" className="btn-primary" disabled={loading}>
+          {loading ? "Recording..." : "Record Damage"}
         </button>
       </form>
 

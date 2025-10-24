@@ -1,18 +1,10 @@
 import React, { useEffect, useState } from "react";
 import { db } from "./firebase";
-import {
-  collection,
-  getDocs,
-  doc,
-  updateDoc,
-  query,
-  where,
-} from "firebase/firestore";
+import { collection, getDocs, doc, updateDoc, query, where, serverTimestamp } from "firebase/firestore";
 
 function ArchivedProducts() {
   const [archivedProducts, setArchivedProducts] = useState([]);
 
-  // ✅ Fetch archived products from Firestore
   useEffect(() => {
     fetchArchivedProducts();
   }, []);
@@ -31,14 +23,13 @@ function ArchivedProducts() {
     }
   };
 
-  // ✅ Unarchive product
   const handleUnarchive = async (id) => {
     if (window.confirm("Restore this product to active inventory?")) {
       try {
         const productRef = doc(db, "products", id);
         await updateDoc(productRef, {
           archived: false,
-          lastUpdated: new Date().toLocaleString(),
+          lastUpdated: serverTimestamp(), // ✅ Firestore timestamp
         });
         fetchArchivedProducts(); // refresh list
         alert("✅ Product restored successfully!");
@@ -47,6 +38,13 @@ function ArchivedProducts() {
         alert("❌ Failed to restore product.");
       }
     }
+  };
+
+  // Helper to display Firestore timestamps
+  const formatTimestamp = (timestamp) => {
+    if (!timestamp) return "—";
+    if (timestamp.toDate) return timestamp.toDate().toLocaleString();
+    return timestamp;
   };
 
   return (
@@ -83,13 +81,10 @@ function ArchivedProducts() {
                   <td>{remaining < 0 ? 0 : remaining}</td>
                   <td>₦{p.price}</td>
                   <td>₦{p.amount}</td>
-                  <td>{p.dateAdded || "—"}</td>
-                  <td>{p.lastUpdated || "—"}</td>
+                  <td>{formatTimestamp(p.dateAdded)}</td>
+                  <td>{formatTimestamp(p.lastUpdated)}</td>
                   <td>
-                    <button
-                      className="unarchive-btn"
-                      onClick={() => handleUnarchive(p.id)}
-                    >
+                    <button className="unarchive-btn" onClick={() => handleUnarchive(p.id)}>
                       Restore
                     </button>
                   </td>

@@ -2,6 +2,27 @@ import React, { useEffect, useState } from "react";
 import { db } from "./firebase";
 import { collection, getDocs } from "firebase/firestore";
 
+// 🕒 Helper function for formatting Firestore timestamps
+const formatTimestamp = (ts) => {
+  if (!ts) return "—";
+  if (ts.seconds && typeof ts.seconds === "number") {
+    const d = new Date(
+      ts.seconds * 1000 +
+        (ts.nanoseconds ? Math.round(ts.nanoseconds / 1e6) : 0)
+    );
+    return d.toLocaleString();
+  }
+  if (typeof ts.toDate === "function") {
+    try {
+      return ts.toDate().toLocaleString();
+    } catch {
+      return "—";
+    }
+  }
+  const d = new Date(ts);
+  return isNaN(d.getTime()) ? "—" : d.toLocaleString();
+};
+
 const Dashboard = () => {
   const [products, setProducts] = useState([]);
 
@@ -31,8 +52,9 @@ const Dashboard = () => {
 
   return (
     <div className="dashboard-container">
-      <h2>📊 Stock Overview</h2>
+      <h2 className="dashboard-title">📊 Stock Overview</h2>
 
+      {/* Summary Cards */}
       <div className="summary-cards">
         <div className="card">
           <h3>Total Stock</h3>
@@ -52,14 +74,17 @@ const Dashboard = () => {
         </div>
       </div>
 
+      {/* Product Table */}
       <h3 className="table-title">Product Summary</h3>
+
       {products.length === 0 ? (
-        <p>No products found.</p>
+        <p className="no-products">No products found.</p>
       ) : (
         <table className="dashboard-table">
           <thead>
             <tr>
               <th>Name</th>
+              <th>Date Added</th>
               <th>Total Qty</th>
               <th>Sold</th>
               <th>Damaged</th>
@@ -70,6 +95,7 @@ const Dashboard = () => {
             {products.map((p) => (
               <tr key={p.id}>
                 <td>{p.name}</td>
+                <td>{formatTimestamp(p.dateAdded)}</td>
                 <td>{p.total}</td>
                 <td>{p.sold}</td>
                 <td>{p.damaged}</td>
