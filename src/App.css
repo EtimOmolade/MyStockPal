@@ -747,7 +747,7 @@ body.dark-mode .filter-button:hover {
     display: block;
     width: 100%;
     overflow-x: auto;
-    white-space: nowrap;
+  
     border-radius: 8px;
   }
 
