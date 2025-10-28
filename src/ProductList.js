@@ -207,11 +207,7 @@ function ProductList() {
                       <Link to={`/product/${p.id}`}>
                         <button className="view-btn">View</button>
                       </Link>
-                      <div className="hide-mobile">
-                        <Link to={`/edit/${p.id}`}>
-                          <button className="edit-btn">Edit</button>
-                        </Link>
-                      </div>
+                     
                     </div>
                   </td>
                 </tr>

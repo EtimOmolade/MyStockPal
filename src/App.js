@@ -10,6 +10,7 @@ import EditProduct from "./EditProduct";
 import StockHistory from "./StockHistory";
 import ProductView from "./ProductView";
 import StockHistoryDetails from "./StockHistoryDetails";
+import DashboardDetails from "./DashboardDetails";
 import "./App.css";
 
 function App() {
@@ -75,6 +76,7 @@ function App() {
         <Route path="/dashboard" element={<Dashboard />} />
         <Route path="/product/:id" element={<ProductView />} />
 <Route path="/stock-history/:id" element={<StockHistoryDetails />} />
+<Route path="/dashboard/:id" element={<DashboardDetails />} />
       </Routes>
     </Router>
   );

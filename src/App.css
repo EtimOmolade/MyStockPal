@@ -237,7 +237,7 @@ button:hover {
 
 .table-title {
   margin-top: 2rem;
-  color: #333;
+  
 }
 
 .dashboard-table {
@@ -293,8 +293,8 @@ button:hover {
 }
 
 /* Edit Button */
-.edit-btn {
-  background-color: yellowgreen;
+.edit-btn, .unarchive-btn {
+  background-color: blue;
   
 }
 
@@ -310,11 +310,7 @@ button:hover {
   background-color: #555;
 }
 
-/* Unarchive Button (for later use) */
-.unarchive-btn {
-  background-color: yellowgreen;
 
-}
 
 .unarchive-btn:hover {
   background-color: #005fcc;
@@ -736,7 +732,7 @@ body.dark-mode .filter-button:hover {
   }
 
   input[type="number"] {
-    width: 60px;
+    width: 220%;
   }
 }
 
@@ -912,7 +908,7 @@ body.dark-mode .filter-button:hover {
 .inventory-table th,
 .inventory-table td {
   padding: 10px;
-  text-align: left;
+  
   border-bottom: 1px solid #ddd;
 }
 
@@ -955,12 +951,7 @@ body.dark-mode .filter-button:hover {
 
   .view-btn {
     background: #b5179e;
-    color: #fff;
-    border: none;
-    padding: 6px 10px;
-    border-radius: 8px;
-    cursor: pointer;
-    font-size: 0.9rem;
+   
   }
 
   .view-btn:hover {
@@ -973,7 +964,7 @@ body.dark-mode .filter-button:hover {
   }
 
   .details-card {
-    background: #fff;
+  
     border-radius: 12px;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
     padding: 15px;

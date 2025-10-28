@@ -1,6 +1,6 @@
 // src/ArchivedProducts.js
 import React, { useEffect, useState } from "react";
-import { Link } from "react-router-dom"; // ✅ MUST be here
+import { Link } from "react-router-dom";
 import { db } from "./firebase";
 import {
   collection,
@@ -15,6 +15,14 @@ import {
 function ArchivedProducts() {
   const [archivedProducts, setArchivedProducts] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [isMobile, setIsMobile] = useState(window.innerWidth <= 768); // ✅ NEW: track screen width
+
+  // ✅ Detect window resize and update state
+  useEffect(() => {
+    const handleResize = () => setIsMobile(window.innerWidth <= 768);
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
 
   // ✅ Fetch archived products
   useEffect(() => {
@@ -92,52 +100,54 @@ function ArchivedProducts() {
               <th className="hide-mobile">Amount</th>
               <th className="hide-mobile">Date Added</th>
               <th className="hide-mobile">Last Updated</th>
-              <th>Actions</th>    
+              <th>Actions</th>
             </tr>
           </thead>
 
           <tbody>
-            {archivedProducts.map((p) => {
-              
-              return (
-                <tr key={p.id}>
-                  <td>{p.name}</td>
-                  <td>{p.total || 0}</td>
-                  <td>{p.sold || 0}</td>
-                  <td className="hide-mobile">{p.damaged || 0}</td>
-
-                  <td className="hide-mobile">₦{p.price || 0}</td>
-                  <td className="hide-mobile">
-                    ₦{(p.amount || 0).toLocaleString()}
-                  </td>
-                  <td className="hide-mobile">{formatTimestamp(p.dateAdded)}</td>
-                  <td className="hide-mobile">{formatTimestamp(p.lastUpdated)}</td>
-                  <td>
-                    <div className="action-buttons">
+            {archivedProducts.map((p) => (
+              <tr key={p.id}>
+                <td>{p.name}</td>
+                <td>{p.total || 0}</td>
+                <td>{p.sold || 0}</td>
+                <td className="hide-mobile">{p.damaged || 0}</td>
+                <td className="hide-mobile">₦{p.price || 0}</td>
+                <td className="hide-mobile">
+                  ₦{(p.amount || 0).toLocaleString()}
+                </td>
+                <td className="hide-mobile">{formatTimestamp(p.dateAdded)}</td>
+                <td className="hide-mobile">{formatTimestamp(p.lastUpdated)}</td>
+                <td>
+                  <div className="action-buttons">
+                    {/* ✅ Only show View button on small screens */}
+                    {isMobile && (
                       <Link to={`/product/${p.id}`}>
                         <button className="view-btn">View</button>
                       </Link>
-                      <button
-                        className="unarchive-btn"
-                        onClick={() => handleUnarchive(p.id)}
-                      >
-                        Restore
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              );
-            })}
+                    )}
+
+                    {/* ✅ Always show Restore */}
+                    <button
+                      className="unarchive-btn"
+                      onClick={() => handleUnarchive(p.id)}
+                    >
+                      Restore
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            ))}
           </tbody>
         </table>
       )}
-       <div style={{ marginTop: "20px", textAlign: "center" }}>
-              <Link to="/">
-                <button className="btn-primary" style={{ marginTop: "10px" }}>
-                  ⬅ Back to Products
-                </button>
-              </Link>
-            </div>
+
+      <div style={{ marginTop: "20px", textAlign: "center" }}>
+        <Link to="/">
+          <button className="btn-primary" style={{ marginTop: "10px" }}>
+            ⬅ Back to Products
+          </button>
+        </Link>
+      </div>
     </div>
   );
 }

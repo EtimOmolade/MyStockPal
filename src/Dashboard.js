@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { db } from "./firebase";
 import { collection, getDocs, query, orderBy } from "firebase/firestore";
+import { Link } from "react-router-dom";
 
 // Helper — format Firestore timestamp
 const formatTimestamp = (ts) => {
@@ -92,7 +93,7 @@ const Dashboard = () => {
           <h3>Total Sold</h3>
           <p>{totalSold}</p>
         </div>
-        <div className="card">
+        <div className="card ">
           <h3>Total Damaged</h3>
           <p>{totalDamaged}</p>
         </div>
@@ -112,10 +113,11 @@ const Dashboard = () => {
             <tr>
               <th>Name</th>
               <th>Stock Added</th>
-              <th>Sold</th>
-              <th>Damaged</th>
-              <th>Remaining</th>
-              <th>Revenue (₦)</th>
+              <th className="hide-mobile">Sold</th>
+              <th className="hide-mobile">Damaged</th>
+              <th className="hide-mobile">Remaining</th>
+              <th className="hide-mobile">Revenue (₦)</th>
+              
             </tr>
           </thead>
           <tbody>
@@ -135,10 +137,19 @@ const Dashboard = () => {
                       "—"
                     )}
                   </td>
-                  <td>{p.sold || 0}</td>
-                  <td>{p.damaged || 0}</td>
-                  <td>{remaining < 0 ? 0 : remaining}</td>
-                  <td>₦{(revenues[p.id] || 0).toLocaleString()}</td>
+                  <td className="hide-mobile">{p.sold || 0}</td>
+                  <td className="hide-mobile">{p.damaged || 0}</td>
+                  <td className="hide-mobile">{remaining < 0 ? 0 : remaining}</td>
+                  <td className="hide-mobile">₦{(revenues[p.id] || 0).toLocaleString()}</td>
+                
+
+                
+                {/* ✅ Mobile “View” button (only visible on small screens) */}
+                <td className="show-mobile action-buttons">
+                  <Link to={`/dashboard/${p.id}`}>
+                    <button className="view-btn">View</button>
+                  </Link>
+                </td>
                 </tr>
               );
             })}
