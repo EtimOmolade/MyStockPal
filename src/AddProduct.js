@@ -150,7 +150,7 @@ const AddProduct = () => {
       <div style={{ marginTop: "20px", textAlign: "center" }}>
         <Link to="/">
           <button className="btn-primary" style={{ marginTop: "10px" }}>
-            ⬅ Back to Products
+            ⬅ Back 
           </button>
         </Link>
       </div>

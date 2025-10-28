@@ -1,54 +1,82 @@
 import React, { useEffect, useState } from "react";
 import { db } from "./firebase";
-import { collection, getDocs } from "firebase/firestore";
+import { collection, getDocs, query, orderBy } from "firebase/firestore";
 
-// 🕒 Helper function for formatting Firestore timestamps
+// Helper — format Firestore timestamp
 const formatTimestamp = (ts) => {
   if (!ts) return "—";
   if (ts.seconds && typeof ts.seconds === "number") {
-    const d = new Date(
-      ts.seconds * 1000 +
-        (ts.nanoseconds ? Math.round(ts.nanoseconds / 1e6) : 0)
-    );
+    const d = new Date(ts.seconds * 1000);
     return d.toLocaleString();
   }
-  if (typeof ts.toDate === "function") {
-    try {
-      return ts.toDate().toLocaleString();
-    } catch {
-      return "—";
-    }
-  }
-  const d = new Date(ts);
-  return isNaN(d.getTime()) ? "—" : d.toLocaleString();
+  return ts.toDate ? ts.toDate().toLocaleString() : "—";
 };
 
 const Dashboard = () => {
   const [products, setProducts] = useState([]);
+  const [revenues, setRevenues] = useState({});
+  const [stockDetails, setStockDetails] = useState({});
 
-  // ✅ Fetch products from Firestore
+  // ✅ Fetch all products
   useEffect(() => {
     const fetchProducts = async () => {
       try {
-        const querySnapshot = await getDocs(collection(db, "products"));
-        const productList = querySnapshot.docs.map((doc) => ({
-          id: doc.id,
-          ...doc.data(),
-        }));
-        setProducts(productList);
+        const snapshot = await getDocs(collection(db, "products"));
+        const list = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+        setProducts(list);
       } catch (err) {
         console.error("Error fetching products:", err);
       }
     };
-
     fetchProducts();
   }, []);
 
-  // ✅ Calculations
-  const totalStock = products.reduce((acc, p) => acc + (p.total || 0), 0);
-  const totalSold = products.reduce((acc, p) => acc + (p.sold || 0), 0);
-  const totalDamaged = products.reduce((acc, p) => acc + (p.damaged || 0), 0);
-  const totalRevenue = products.reduce((acc, p) => acc + (p.amount || 0), 0);
+  // ✅ Fetch history to calculate revenue & stock added details
+  useEffect(() => {
+    const fetchHistory = async () => {
+      try {
+        const q = query(collection(db, "history"), orderBy("date", "desc"));
+        const snapshot = await getDocs(q);
+        const records = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+
+        const revenueMap = {};
+        const stockMap = {};
+
+        records.forEach((r) => {
+          // 💰 Revenue from sold items
+          if (r.action === "Sold" && r.productId && r.quantity) {
+            const product = products.find((p) => p.id === r.productId);
+            if (product && product.price) {
+              const earned = r.quantity * product.price;
+              revenueMap[r.productId] = (revenueMap[r.productId] || 0) + earned;
+            }
+          }
+
+          // 📦 Track the last "Stock Added" detail
+          if (r.action === "Stock Added" && r.productId && !stockMap[r.productId]) {
+            stockMap[r.productId] = {
+              quantity: r.quantity,
+              date: r.date,
+              note: r.note || "",
+            };
+          }
+        });
+
+        setRevenues(revenueMap);
+        setStockDetails(stockMap);
+      } catch (err) {
+        console.error("Error fetching history:", err);
+      }
+    };
+
+    if (products.length > 0) fetchHistory();
+  }, [products]);
+
+  // ✅ Totals for summary
+  const totalStock = products.reduce((a, p) => a + (p.total || 0), 0);
+  const totalSold = products.reduce((a, p) => a + (p.sold || 0), 0);
+  const totalDamaged = products.reduce((a, p) => a + (p.damaged || 0), 0);
+  const totalRevenue = Object.values(revenues).reduce((a, b) => a + b, 0);
 
   return (
     <div className="dashboard-container">
@@ -74,9 +102,8 @@ const Dashboard = () => {
         </div>
       </div>
 
-      {/* Product Table */}
-      <h3 className="table-title">Product Summary</h3>
-
+      {/* Product Summary */}
+      <h3 className="table-title">🧾 Product Summary</h3>
       {products.length === 0 ? (
         <p className="no-products">No products found.</p>
       ) : (
@@ -84,24 +111,37 @@ const Dashboard = () => {
           <thead>
             <tr>
               <th>Name</th>
-              <th>Date Added</th>
-              <th>Total Qty</th>
+              <th>Stock Added</th>
               <th>Sold</th>
               <th>Damaged</th>
+              <th>Remaining</th>
               <th>Revenue (₦)</th>
             </tr>
           </thead>
           <tbody>
-            {products.map((p) => (
-              <tr key={p.id}>
-                <td>{p.name}</td>
-                <td>{formatTimestamp(p.dateAdded)}</td>
-                <td>{p.total}</td>
-                <td>{p.sold}</td>
-                <td>{p.damaged}</td>
-                <td>{(p.amount || 0).toLocaleString()}</td>
-              </tr>
-            ))}
+            {products.map((p) => {
+              const stock = stockDetails[p.id];
+              const remaining = (p.total || 0) - ((p.sold || 0) + (p.damaged || 0));
+              return (
+                <tr key={p.id}>
+                  <td>{p.name}</td>
+                  <td>
+                    {stock ? (
+                      <>
+                        {stock.quantity} units <br />
+                        <small>{formatTimestamp(stock.date)}</small>
+                      </>
+                    ) : (
+                      "—"
+                    )}
+                  </td>
+                  <td>{p.sold || 0}</td>
+                  <td>{p.damaged || 0}</td>
+                  <td>{remaining < 0 ? 0 : remaining}</td>
+                  <td>₦{(revenues[p.id] || 0).toLocaleString()}</td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       )}

@@ -59,6 +59,10 @@ nav a:hover {
   color: white;
 }
 
+
+
+
+
 /* ===== THEME TOGGLE BUTTON ===== */
 .theme-toggle {
   background: white;
@@ -290,13 +294,8 @@ button:hover {
 
 /* Edit Button */
 .edit-btn {
-  background-color: purple;
-  color: white;
-  border: none;
-  padding: 10px 20px;
-  border-radius: 6px;
-  cursor: pointer;
-  transition: 0.3s;
+  background-color: yellowgreen;
+  
 }
 
 .edit-btn:hover {
@@ -305,13 +304,6 @@ button:hover {
 /* Archive Button */
 .archive-btn {
   background-color: gray;
-  color: white;
-  border: none;
-  padding: 10px 8px;
-  border-radius: 6px;
-  cursor: pointer;
-  transition: 0.3s;
-  margin: 4px;
 }
 
 .archive-btn:hover {
@@ -320,13 +312,8 @@ button:hover {
 
 /* Unarchive Button (for later use) */
 .unarchive-btn {
-  background-color: purple;
-  color: white;
-  border: none;
-  padding: 6px 12px;
-  border-radius: 6px;
-  cursor: pointer;
-  transition: 0.3s;
+  background-color: yellowgreen;
+
 }
 
 .unarchive-btn:hover {
@@ -633,6 +620,427 @@ body.dark-mode .filter-button:hover {
   color: white;
   box-shadow: 0 0 8px rgba(123, 44, 191, 0.4);
 }
+
+
+/* ===== HAMBURGER MENU STYLES ===== */
+.hamburger {
+  display: none;
+  flex-direction: column;
+  cursor: pointer;
+  width: 25px;
+  height: 18px;
+  justify-content: space-between;
+}
+
+.hamburger span {
+  background: white;
+  height: 3px;
+  width: 100%;
+  border-radius: 5px;
+  transition: all 0.3s ease;
+}
+
+/* Hamburger open animation */
+.hamburger.open span:nth-child(1) {
+  transform: rotate(45deg) translate(5px, 5px);
+}
+.hamburger.open span:nth-child(2) {
+  opacity: 0;
+}
+.hamburger.open span:nth-child(3) {
+  transform: rotate(-45deg) translate(5px, -5px);
+}
+
+/* ===== MOBILE NAVIGATION ===== */
+@media (max-width: 768px) {
+  nav {
+    flex-wrap: wrap;
+    padding: 1rem;
+  }
+
+  .nav-left {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+  }
+
+  .nav-links {
+    display: none;
+    flex-direction: column;
+    width: 100%;
+    background: #b5179e;
+    border-radius: 8px;
+    margin-top: 10px;
+    padding: 10px 0;
+  }
+
+  .nav-links.show {
+    display: flex;
+    animation: fadeIn 0.3s ease-in-out;
+  }
+
+  .nav-links a {
+    text-align: center;
+    padding: 10px 0;
+    color: white;
+    font-weight: 500;
+  }
+
+  .nav-links a:hover {
+    background-color: rgba(255, 255, 255, 0.1);
+  }
+
+  .hamburger {
+    display: flex;
+  }
+
+  .theme-toggle {
+    margin-top: 10px;
+    width: 100%;
+  }
+}
+
+/* Small animation for showing menu */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+
+
+
+/* ===== PRODUCT PAGE MOBILE RESPONSIVENESS ===== */
+@media (max-width: 1024px) {
+  .inventory-page {
+    padding: 10px;
+  }
+
+  table {
+    font-size: 0.9rem;
+  }
+
+  th, td {
+    padding: 0.6em;
+  }
+
+  button {
+    padding: 0.7rem;
+    font-size: 0.9rem;
+  }
+
+  input[type="number"] {
+    width: 60px;
+  }
+}
+
+/* ===== Smaller tablets and phones ===== */
+@media (max-width: 768px) {
+  /* Make table scrollable */
+  .inventory-table {
+    display: block;
+    width: 100%;
+    overflow-x: auto;
+    white-space: nowrap;
+    border-radius: 8px;
+  }
+
+  .inventory-table table {
+    width: 100%;
+    border-collapse: collapse;
+  }
+
+  th, td {
+    padding: 0.7rem 0.5rem;
+    font-size: 0.85rem;
+  }
+
+  /* Align Add Stock input and button neatly */
+  td input[type="number"] {
+    width: 50px;
+    margin-bottom: 5px;
+  }
+
+  td button {
+    display: block;
+    width: 100%;
+    margin-top: 5px;
+  }
+
+  .edit-btn,
+  .archive-btn {
+    display: block;
+    width: 100%;
+    margin: 3px 0;
+  }
+
+  /* Adjust daily revenue display */
+  .inventory-page div[style*="💰"] {
+    font-size: 14px !important;
+    display: block;
+    width: 100%;
+    text-align: center;
+    padding: 12px;
+  }
+
+  h2 {
+    font-size: 1.3rem;
+  }
+}
+
+/* ===== Extra small phones ===== */
+@media (max-width: 480px) {
+  body {
+    padding: 0 10px;
+  }
+
+  h2 {
+    font-size: 1.2rem;
+  }
+
+  th, td {
+    font-size: 0.8rem;
+    padding: 0.5rem;
+  }
+
+  button {
+    font-size: 0.8rem;
+    padding: 0.6rem;
+  }
+
+  input[type="number"] {
+    width: 45px;
+  }
+
+  .inventory-page p {
+    font-size: 13px;
+  }
+}
+
+
+
+/* ===== MOBILE PRODUCT TABLE ===== */
+@media (max-width: 768px) {
+  .inventory-table {
+    font-size: 12px;
+  }
+
+  .inventory-table th,
+  .inventory-table td {
+    padding: 6px 4px;
+  }
+
+  /* Hide less important columns */
+  .hide-mobile {
+    display: none;
+  }
+
+  /* Stack action buttons */
+  .action-buttons {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    align-items: stretch;
+  }
+
+  .action-buttons button,
+  .action-buttons a button {
+    padding: 4px 6px;
+    font-size: 11px;
+    border-radius: 5px;
+  }
+
+  .view-btn {
+    background: lightblue;
+    border: none;
+  }
+
+  .edit-btn {
+    background: yellowgreen;
+   
+    border: none;
+  }
+
+  .archive-btn {
+    background: grey;
+    border: none;
+  }
+
+  .view-btn:hover {
+    background: rgb(123, 123, 201);
+  }
+
+  .edit-btn:hover {
+    background: #42a5f5;
+  }
+
+  .archive-btn:hover {
+    background: #ef5350;
+  }
+
+  .stock-update {
+    margin-top: 8px;
+    display: flex;
+    gap: 5px;
+  }
+
+  .stock-update input {
+    width: 60px;
+    padding: 4px;
+    font-size: 12px;
+  }
+
+  .stock-update button {
+    padding: 5px 8px;
+    font-size: 12px;
+  }
+}
+
+
+/* ===== PRODUCT LIST TABLE ===== */
+.inventory-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.inventory-table th,
+.inventory-table td {
+  padding: 10px;
+  text-align: left;
+  border-bottom: 1px solid #ddd;
+}
+
+/* Hide scrollbars, shrink font on small screens */
+@media (max-width: 768px) {
+  .inventory-table {
+    font-size: 13px;
+    width: 100%;
+    overflow: hidden;
+  }
+  .inventory-table th,
+  .inventory-table td {
+    padding: 6px 4px;
+  }
+  .view-btn {
+    background: #b5179e;
+    color: white;
+    border: none;
+    padding: 6px 10px;
+    border-radius: 5px;
+    font-size: 12px;
+  }
+}
+
+
+/* Hide "View" button by default */
+.show-mobile {
+  display: none;
+}
+
+/* Show only on small screens */
+@media (max-width: 768px) {
+  .hide-mobile {
+    display: none;
+  }
+
+  .show-mobile {
+    display: table-cell;
+  }
+
+  .view-btn {
+    background: #b5179e;
+    color: #fff;
+    border: none;
+    padding: 6px 10px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 0.9rem;
+  }
+
+  .view-btn:hover {
+    background: #a3158f;
+  }
+
+  /* Details Page */
+  .details-container {
+    padding: 20px;
+  }
+
+  .details-card {
+    background: #fff;
+    border-radius: 12px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    padding: 15px;
+    margin-top: 10px;
+  }
+
+  .details-card p {
+    margin: 8px 0;
+  }
+
+  .back-btn {
+    margin-top: 15px;
+    background: #333;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    padding: 8px 12px;
+    cursor: pointer;
+  }
+}
+
+
+
+
+/* Hide on desktop, show on mobile for stockhistorydetails.js*/
+.show-mobile {
+  display: none;
+}
+
+/* Show only on small screens */
+@media (max-width: 768px) {
+  .show-mobile {
+    display: table-cell;
+  }
+
+  .hide-mobile {
+    display: none;
+  }
+
+  .view-btn {
+    background: purple;
+    color: white;
+    border: none;
+    padding: 6px 10px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 0.9rem;
+  }
+
+  .view-btn:hover {
+    background: #0056b3;
+  }
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

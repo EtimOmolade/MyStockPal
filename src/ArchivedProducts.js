@@ -1,15 +1,28 @@
+// src/ArchivedProducts.js
 import React, { useEffect, useState } from "react";
+import { Link } from "react-router-dom"; // ✅ MUST be here
 import { db } from "./firebase";
-import { collection, getDocs, doc, updateDoc, query, where, serverTimestamp } from "firebase/firestore";
+import {
+  collection,
+  getDocs,
+  doc,
+  updateDoc,
+  query,
+  where,
+  serverTimestamp,
+} from "firebase/firestore";
 
 function ArchivedProducts() {
   const [archivedProducts, setArchivedProducts] = useState([]);
+  const [loading, setLoading] = useState(true);
 
+  // ✅ Fetch archived products
   useEffect(() => {
     fetchArchivedProducts();
   }, []);
 
   const fetchArchivedProducts = async () => {
+    setLoading(true);
     try {
       const q = query(collection(db, "products"), where("archived", "==", true));
       const querySnapshot = await getDocs(q);
@@ -17,21 +30,25 @@ function ArchivedProducts() {
         id: doc.id,
         ...doc.data(),
       }));
-      setArchivedProducts(archived);
+      setArchivedProducts(archived.sort((a, b) => a.name.localeCompare(b.name)));
     } catch (err) {
       console.error("Error fetching archived products:", err);
+      alert("❌ Failed to load archived products. Please try again.");
+    } finally {
+      setLoading(false);
     }
   };
 
+  // ✅ Unarchive product
   const handleUnarchive = async (id) => {
     if (window.confirm("Restore this product to active inventory?")) {
       try {
         const productRef = doc(db, "products", id);
         await updateDoc(productRef, {
           archived: false,
-          lastUpdated: serverTimestamp(), // ✅ Firestore timestamp
+          lastUpdated: serverTimestamp(),
         });
-        fetchArchivedProducts(); // refresh list
+        setArchivedProducts((prev) => prev.filter((p) => p.id !== id));
         alert("✅ Product restored successfully!");
       } catch (error) {
         console.error("Error unarchiving product:", error);
@@ -40,53 +57,73 @@ function ArchivedProducts() {
     }
   };
 
-  // Helper to display Firestore timestamps
+  // ✅ Format Firestore timestamp
   const formatTimestamp = (timestamp) => {
     if (!timestamp) return "—";
-    if (timestamp.toDate) return timestamp.toDate().toLocaleString();
-    return timestamp;
+    if (timestamp.seconds)
+      return new Date(timestamp.seconds * 1000).toLocaleString();
+    if (typeof timestamp.toDate === "function")
+      return timestamp.toDate().toLocaleString();
+    const d = new Date(timestamp);
+    return isNaN(d.getTime()) ? "—" : d.toLocaleString();
   };
 
   return (
-    <div className="table-container">
+    <div className="inventory-page">
       <h2>🗃️ Archived Products</h2>
+      <p style={{ fontSize: "14px", color: "#888" }}>
+        Showing archived records as of:{" "}
+        <strong>{new Date().toDateString()}</strong>
+      </p>
 
-      {archivedProducts.length === 0 ? (
+      {loading ? (
+        <p>Loading archived products...</p>
+      ) : archivedProducts.length === 0 ? (
         <p>No archived products found.</p>
       ) : (
         <table className="inventory-table">
           <thead>
             <tr>
               <th>Name</th>
-              <th>Total</th>
+              <th>Stock</th>
               <th>Sold</th>
-              <th>Damaged</th>
-              <th>Remaining</th>
-              <th>Price</th>
-              <th>Amount</th>
-              <th>Date Added</th>
-              <th>Last Updated</th>
-              <th>Actions</th>
+              <th className="hide-mobile">Damaged</th>
+              <th className="hide-mobile">Price</th>
+              <th className="hide-mobile">Amount</th>
+              <th className="hide-mobile">Date Added</th>
+              <th className="hide-mobile">Last Updated</th>
+              <th>Actions</th>    
             </tr>
           </thead>
+
           <tbody>
             {archivedProducts.map((p) => {
-              const remaining = (p.total || 0) - ((p.sold || 0) + (p.damaged || 0));
+              
               return (
                 <tr key={p.id}>
                   <td>{p.name}</td>
-                  <td>{p.total}</td>
-                  <td>{p.sold}</td>
-                  <td>{p.damaged}</td>
-                  <td>{remaining < 0 ? 0 : remaining}</td>
-                  <td>₦{p.price}</td>
-                  <td>₦{p.amount}</td>
-                  <td>{formatTimestamp(p.dateAdded)}</td>
-                  <td>{formatTimestamp(p.lastUpdated)}</td>
+                  <td>{p.total || 0}</td>
+                  <td>{p.sold || 0}</td>
+                  <td className="hide-mobile">{p.damaged || 0}</td>
+
+                  <td className="hide-mobile">₦{p.price || 0}</td>
+                  <td className="hide-mobile">
+                    ₦{(p.amount || 0).toLocaleString()}
+                  </td>
+                  <td className="hide-mobile">{formatTimestamp(p.dateAdded)}</td>
+                  <td className="hide-mobile">{formatTimestamp(p.lastUpdated)}</td>
                   <td>
-                    <button className="unarchive-btn" onClick={() => handleUnarchive(p.id)}>
-                      Restore
-                    </button>
+                    <div className="action-buttons">
+                      <Link to={`/product/${p.id}`}>
+                        <button className="view-btn">View</button>
+                      </Link>
+                      <button
+                        className="unarchive-btn"
+                        onClick={() => handleUnarchive(p.id)}
+                      >
+                        Restore
+                      </button>
+                    </div>
                   </td>
                 </tr>
               );
@@ -94,6 +131,13 @@ function ArchivedProducts() {
           </tbody>
         </table>
       )}
+       <div style={{ marginTop: "20px", textAlign: "center" }}>
+              <Link to="/">
+                <button className="btn-primary" style={{ marginTop: "10px" }}>
+                  ⬅ Back to Products
+                </button>
+              </Link>
+            </div>
     </div>
   );
 }

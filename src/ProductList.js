@@ -1,4 +1,3 @@
-// src/ProductList.js
 import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import {
@@ -13,131 +12,108 @@ import { db } from "./firebase";
 
 function ProductList() {
   const [products, setProducts] = useState([]);
-  const [dailyStats, setDailyStats] = useState({});
+  const [lastAdded, setLastAdded] = useState({});
   const [addQty, setAddQty] = useState({});
+  const [dailyAmounts, setDailyAmounts] = useState({});
   const [totalRevenue, setTotalRevenue] = useState(0);
 
-  // ✅ Real-time listener for products
+  // ✅ Fetch products in real-time
   useEffect(() => {
     const unsubscribe = onSnapshot(collection(db, "products"), (snapshot) => {
       const productList = snapshot.docs.map((doc) => ({
         id: doc.id,
         ...doc.data(),
       }));
-
-      const activeProducts = productList.filter((p) => !p.archived);
-      const sortedProducts = activeProducts.sort((a, b) =>
-        a.name.localeCompare(b.name)
-      );
-
-      setProducts(sortedProducts);
+      const active = productList.filter((p) => !p.archived);
+      setProducts(active.sort((a, b) => a.name.localeCompare(b.name)));
     });
-
     return () => unsubscribe();
   }, []);
 
-  // ✅ Real-time listener for history updates
+  // ✅ Fetch history and compute *daily* stock added + *daily* revenue
   useEffect(() => {
     const unsubscribe = onSnapshot(collection(db, "history"), (snapshot) => {
       const historyData = snapshot.docs.map((doc) => ({
         id: doc.id,
         ...doc.data(),
       }));
-      calculateDailyStats(historyData, products);
+
+      const dailyAddedMap = {};
+      const dailyAmountMap = {};
+      let totalRevenueToday = 0;
+
+      const today = new Date();
+      today.setHours(0, 0, 0, 0); // Midnight today
+
+      historyData.forEach((record) => {
+        if (!record.date?.seconds) return;
+        const recordDate = new Date(record.date.seconds * 1000);
+        recordDate.setHours(0, 0, 0, 0);
+
+        // ✅ Only count today's stock additions
+        if (record.action === "Stock Added" && recordDate.getTime() === today.getTime()) {
+          if (!dailyAddedMap[record.productId]) dailyAddedMap[record.productId] = 0;
+          dailyAddedMap[record.productId] += record.quantity;
+        }
+
+        // ✅ Only count today's sales for daily revenue
+        if (record.action === "Sold" && recordDate.getTime() === today.getTime()) {
+          const product = products.find((p) => p.id === record.productId);
+          const price = product?.price || 0;
+          const amount = record.quantity * price;
+
+          if (!dailyAmountMap[record.productId]) dailyAmountMap[record.productId] = 0;
+          dailyAmountMap[record.productId] += amount;
+          totalRevenueToday += amount;
+        }
+      });
+
+      setLastAdded(dailyAddedMap);  // ✅ Now shows only today's added stock
+      setDailyAmounts(dailyAmountMap);
+      setTotalRevenue(totalRevenueToday);
     });
 
     return () => unsubscribe();
   }, [products]);
 
-  // 🧮 Calculate daily stats + total revenue
-  const calculateDailyStats = (historyData, productList) => {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const tomorrow = new Date(today);
-    tomorrow.setDate(today.getDate() + 1);
-
-    const todaysHistory = historyData.filter((record) => {
-      if (!record.date?.seconds) return false;
-      const recordDate = new Date(record.date.seconds * 1000);
-      return recordDate >= today && recordDate < tomorrow;
-    });
-
-    const stats = {};
-    let total = 0;
-
-    productList.forEach((p) => {
-      const productHistory = todaysHistory.filter(
-        (h) => h.productId === p.id
-      );
-
-      const sold = productHistory
-        .filter((h) => h.action === "Sold")
-        .reduce((sum, h) => sum + (h.quantity || 0), 0);
-
-      const damaged = productHistory
-        .filter((h) => h.action === "Damaged")
-        .reduce((sum, h) => sum + (h.quantity || 0), 0);
-
-      const added = productHistory
-        .filter((h) => h.action === "Stock Added")
-        .reduce((sum, h) => sum + (h.quantity || 0), 0);
-
-      const amount = sold * (p.price || 0);
-      total += amount;
-
-      stats[p.id] = { sold, damaged, added, amount };
-    });
-
-    setDailyStats(stats);
-    setTotalRevenue(total);
-  };
-
-  const handleAddStock = async (productId, productName) => {
-    const qty = parseInt(addQty[productId]);
-    if (isNaN(qty) || qty <= 0) {
-      alert("Please enter a valid quantity to add.");
+  // ✅ Add stock
+  const handleAddStock = async (id, name) => {
+    const qty = parseInt(addQty[id]);
+    if (!qty || qty <= 0) {
+      alert("Enter a valid quantity.");
       return;
     }
 
     try {
-      const productRef = doc(db, "products", productId);
-      const product = products.find((p) => p.id === productId);
-      if (!product) return;
+      const productRef = doc(db, "products", id);
+      const product = products.find((p) => p.id === id);
+
+      if (!product) {
+        alert("Product not found.");
+        return;
+      }
+
+      const newTotal = (product.total || 0) + qty;
 
       await updateDoc(productRef, {
-        total: (product.total || 0) + qty,
+        total: newTotal,
         lastUpdated: serverTimestamp(),
       });
 
       await addDoc(collection(db, "history"), {
-        productId,
-        product: productName,
+        productId: id,
+        productName: name,
         quantity: qty,
         action: "Stock Added",
         date: serverTimestamp(),
         note: `Added ${qty} units`,
       });
 
-      setAddQty({ ...addQty, [productId]: "" });
-      alert("✅ Stock added successfully!");
+      setAddQty({ ...addQty, [id]: "" });
+      alert(`✅ Added ${qty} to ${name}. New total: ${newTotal}.`);
     } catch (error) {
-      console.error("Error adding stock:", error);
-      alert("❌ Could not add stock.");
-    }
-  };
-
-  const handleArchive = async (id, currentStatus) => {
-    const confirmMsg = currentStatus
-      ? "Unarchive this product?"
-      : "Archive this product? It will no longer show in the product list.";
-
-    if (window.confirm(confirmMsg)) {
-      try {
-        const productRef = doc(db, "products", id);
-        await updateDoc(productRef, { archived: !currentStatus });
-      } catch (error) {
-        console.error("Error updating archive status:", error);
-      }
+      console.error("Error updating stock:", error);
+      alert("❌ Failed to update stock. Check console for details.");
     }
   };
 
@@ -156,7 +132,7 @@ function ProductList() {
         Showing data for: <strong>{new Date().toDateString()}</strong>
       </p>
 
-      {/* 💰 Daily Revenue Display */}
+      {/* 💰 Total Revenue Display */}
       <div
         style={{
           margin: "10px 0 20px 0",
@@ -172,7 +148,7 @@ function ProductList() {
       </div>
 
       {products.length === 0 ? (
-        <p>No products found. Add some!</p>
+        <p>No products found.</p>
       ) : (
         <table className="inventory-table">
           <thead>
@@ -180,32 +156,34 @@ function ProductList() {
               <th>Name</th>
               <th>Stock</th>
               <th>Sold</th>
-              <th>Damaged</th>
-              <th>Added</th>
-              <th>Price</th>
-                            <th>Amount (₦)</th>
-
-              <th>Last Updated</th>
-              <th>Add Stock</th>
+              <th className="hide-mobile">Damaged</th>
+              <th className="hide-mobile">Price</th>
+              <th className="hide-mobile">Amount</th>
+              <th className="hide-mobile">Stock Added</th>
+              <th className="hide-mobile">Last Updated</th>
+              <th className="hide-mobile">Add Stock</th>
               <th>Actions</th>
             </tr>
           </thead>
+
           <tbody>
             {products.map((p) => {
-              const stats = dailyStats[p.id] || {};
+              const todayAdded = lastAdded[p.id] || 0;
+              const todayAmount = dailyAmounts[p.id] || 0;
+
               return (
                 <tr key={p.id}>
                   <td>{p.name}</td>
-                                    <td>{p.total || 0}</td>
+                  <td>{p.total || 0}</td>
+                  <td>{p.sold || 0}</td>
+                  <td className="hide-mobile">{p.damaged || 0}</td>
+                  <td className="hide-mobile">₦{p.price || "-"}</td>
+                  <td className="hide-mobile">₦{todayAmount.toLocaleString()}</td>
+                  <td className="hide-mobile">{todayAdded || "—"}</td>
+                  <td className="hide-mobile">{formatTimestamp(p.lastUpdated)}</td>
 
-                  <td>{stats.sold || 0}</td>
-                  <td>{stats.damaged || 0}</td>
-                  <td>{stats.added || 0}</td>
-                                    <td>₦{p.price}</td>
-
-                  <td>₦{(stats.amount || 0).toLocaleString()}</td>
-                  <td>{formatTimestamp(p.lastUpdated)}</td>
-                  <td>
+                  {/* ✅ Add stock input */}
+                  <td className="hide-mobile">
                     <input
                       type="number"
                       placeholder="Qty"
@@ -213,7 +191,7 @@ function ProductList() {
                       onChange={(e) =>
                         setAddQty({ ...addQty, [p.id]: e.target.value })
                       }
-                      style={{ width: "50px" }}
+                      style={{ width: "60px" }}
                     />
                     <button
                       onClick={() => handleAddStock(p.id, p.name)}
@@ -222,16 +200,19 @@ function ProductList() {
                       Update
                     </button>
                   </td>
+
+                  {/* ✅ Actions */}
                   <td>
-                    <Link to={`/edit/${p.id}`}>
-                      <button className="edit-btn">Edit</button>
-                    </Link>
-                    <button
-                      className="archive-btn"
-                      onClick={() => handleArchive(p.id, p.archived)}
-                    >
-                      Archive
-                    </button>
+                    <div className="action-buttons">
+                      <Link to={`/product/${p.id}`}>
+                        <button className="view-btn">View</button>
+                      </Link>
+                      <div className="hide-mobile">
+                        <Link to={`/edit/${p.id}`}>
+                          <button className="edit-btn">Edit</button>
+                        </Link>
+                      </div>
+                    </div>
                   </td>
                 </tr>
               );
