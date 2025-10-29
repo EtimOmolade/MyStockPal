@@ -8,7 +8,7 @@ import {
   serverTimestamp,
   addDoc,
 } from "firebase/firestore";
-import { db } from "./firebase";
+import { db } from "../firebase";
 
 function ProductList() {
   const [products, setProducts] = useState([]);

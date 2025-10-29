@@ -1,29 +1,33 @@
 import { BrowserRouter as Router, Routes, Route, Link } from "react-router-dom";
 import { useState, useEffect } from "react";
-import ProductList from "./ProductList";
-import RecordSales from "./RecordSales";
-import RecordDamages from "./RecordDamages";
-import Dashboard from "./Dashboard";
-import ArchivedProducts from "./ArchivedProducts";
-import AddProduct from "./AddProduct";
-import EditProduct from "./EditProduct";
-import StockHistory from "./StockHistory";
-import ProductView from "./ProductView";
-import StockHistoryDetails from "./StockHistoryDetails";
-import DashboardDetails from "./DashboardDetails";
+import ProductList from "./Product/ProductList";
+import RecordSales from "./Navbars/RecordSales";
+import RecordDamages from "./Navbars/RecordDamages";
+import Dashboard from "./Dashboard/Dashboard";
+import ArchivedProducts from "./Navbars/ArchivedProducts";
+import AddProduct from "./Navbars/AddProduct";
+import EditProduct from "./Product/EditProduct";
+import StockHistory from "./History/StockHistory";
+import ProductView from "./Product/ProductView";
+import StockHistoryDetails from "./History/StockHistoryDetails";
+import DashboardDetails from "./Dashboard/DashboardDetails";
 import "./App.css";
+
+import Login from "./Authentication/Login";
+import Signup from "./Authentication/Signup";
+import ProtectedRoute from "./Authentication/ProtectedRoute";
+import { auth } from "./firebase";
+import { signOut } from "firebase/auth";
 
 function App() {
   const [darkMode, setDarkMode] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
 
-  // Load saved theme preference
   useEffect(() => {
     const storedTheme = localStorage.getItem("theme");
     if (storedTheme === "dark") setDarkMode(true);
   }, []);
 
-  // Apply theme on toggle
   useEffect(() => {
     document.body.className = darkMode ? "dark-mode" : "";
     localStorage.setItem("theme", darkMode ? "dark" : "light");
@@ -34,19 +38,14 @@ function App() {
       <nav>
         <div className="nav-left">
           <div className="logo">MyStockPal</div>
-
-          {/* Hamburger icon */}
           <div
             className={`hamburger ${menuOpen ? "open" : ""}`}
             onClick={() => setMenuOpen(!menuOpen)}
           >
-            <span></span>
-            <span></span>
-            <span></span>
+            <span></span><span></span><span></span>
           </div>
         </div>
 
-        {/* Navigation links */}
         <div className={`nav-links ${menuOpen ? "show" : ""}`}>
           <Link to="/" onClick={() => setMenuOpen(false)}>Products</Link>
           <Link to="/add-product" onClick={() => setMenuOpen(false)}>Add Product</Link>
@@ -57,26 +56,30 @@ function App() {
           <Link to="/dashboard" onClick={() => setMenuOpen(false)}>Dashboard</Link>
         </div>
 
-        <button
-          className="theme-toggle"
-          onClick={() => setDarkMode(!darkMode)}
-        >
+        <button className="theme-toggle" onClick={() => setDarkMode(!darkMode)}>
           {darkMode ? "🌞 Light Mode" : "🌙 Dark Mode"}
+        </button>
+
+        <button className="logout-btn" onClick={() => signOut(auth).then(() => alert("Logged out!"))}>
+          🚪 Logout
         </button>
       </nav>
 
       <Routes>
-        <Route path="/" element={<ProductList />} />
-        <Route path="/add-product" element={<AddProduct />} />
-        <Route path="/edit/:id" element={<EditProduct />} />
-        <Route path="/sales" element={<RecordSales />} />
-        <Route path="/damages" element={<RecordDamages />} />
-        <Route path="/archived-products" element={<ArchivedProducts />} />
-        <Route path="/history" element={<StockHistory />} />
-        <Route path="/dashboard" element={<Dashboard />} />
-        <Route path="/product/:id" element={<ProductView />} />
-<Route path="/stock-history/:id" element={<StockHistoryDetails />} />
-<Route path="/dashboard/:id" element={<DashboardDetails />} />
+        <Route path="/login" element={<Login />} />
+        <Route path="/signup" element={<Signup />} />
+
+        <Route path="/" element={<ProtectedRoute><ProductList /></ProtectedRoute>} />
+        <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+        <Route path="/add-product" element={<ProtectedRoute><AddProduct /></ProtectedRoute>} />
+        <Route path="/edit/:id" element={<ProtectedRoute><EditProduct /></ProtectedRoute>} />
+        <Route path="/sales" element={<ProtectedRoute><RecordSales /></ProtectedRoute>} />
+        <Route path="/damages" element={<ProtectedRoute><RecordDamages /></ProtectedRoute>} />
+        <Route path="/archived-products" element={<ProtectedRoute><ArchivedProducts /></ProtectedRoute>} />
+        <Route path="/history" element={<ProtectedRoute><StockHistory /></ProtectedRoute>} />
+        <Route path="/product/:id" element={<ProtectedRoute><ProductView /></ProtectedRoute>} />
+        <Route path="/stock-history/:id" element={<ProtectedRoute><StockHistoryDetails /></ProtectedRoute>} />
+        <Route path="/dashboard/:id" element={<ProtectedRoute><DashboardDetails /></ProtectedRoute>} />
       </Routes>
     </Router>
   );

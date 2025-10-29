@@ -2,7 +2,7 @@
 import React, { useEffect, useState } from "react";
 import { useParams, Link } from "react-router-dom";
 import { doc, getDoc, collection, getDocs, query, orderBy } from "firebase/firestore";
-import { db } from "./firebase";
+import { db } from "../firebase";
 
 // Helper — format Firestore timestamp
 const formatTimestamp = (ts) => {

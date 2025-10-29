@@ -1,7 +1,7 @@
 // src/StockHistoryDetails.js
 import React, { useEffect, useState } from "react";
 import { useParams, Link } from "react-router-dom";
-import { db } from "./firebase";
+import { db } from "../firebase";
 import { doc, getDoc } from "firebase/firestore";
 
 const StockHistoryDetails = () => {

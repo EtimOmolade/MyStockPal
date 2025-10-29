@@ -8,7 +8,7 @@ import {
   serverTimestamp,
   collection,
 } from "firebase/firestore";
-import { db } from "./firebase";
+import { db } from "../firebase";
 import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 
