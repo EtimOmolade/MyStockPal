@@ -15,9 +15,10 @@ import {
 function ArchivedProducts() {
   const [archivedProducts, setArchivedProducts] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [isMobile, setIsMobile] = useState(window.innerWidth <= 768); // ✅ NEW: track screen width
+  const [expandedRow, setExpandedRow] = useState(null); // ✅ For "More" toggle
+  const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
 
-  // ✅ Detect window resize and update state
+  // ✅ Handle resize for responsiveness
   useEffect(() => {
     const handleResize = () => setIsMobile(window.innerWidth <= 768);
     window.addEventListener("resize", handleResize);
@@ -47,7 +48,7 @@ function ArchivedProducts() {
     }
   };
 
-  // ✅ Unarchive product
+  // ✅ Restore (unarchive) a product
   const handleUnarchive = async (id) => {
     if (window.confirm("Restore this product to active inventory?")) {
       try {
@@ -59,13 +60,13 @@ function ArchivedProducts() {
         setArchivedProducts((prev) => prev.filter((p) => p.id !== id));
         alert("✅ Product restored successfully!");
       } catch (error) {
-        console.error("Error unarchiving product:", error);
+        console.error("Error restoring product:", error);
         alert("❌ Failed to restore product.");
       }
     }
   };
 
-  // ✅ Format Firestore timestamp
+  // ✅ Format timestamps
   const formatTimestamp = (timestamp) => {
     if (!timestamp) return "—";
     if (timestamp.seconds)
@@ -79,7 +80,7 @@ function ArchivedProducts() {
   return (
     <div className="inventory-page">
       <h2>🗃️ Archived Products</h2>
-      <p style={{ fontSize: "14px", color: "#888" }}>
+      <p style={{ fontSize: "14px", color: "#777" }}>
         Showing archived records as of:{" "}
         <strong>{new Date().toDateString()}</strong>
       </p>
@@ -89,56 +90,86 @@ function ArchivedProducts() {
       ) : archivedProducts.length === 0 ? (
         <p>No archived products found.</p>
       ) : (
-        <table className="inventory-table">
-          <thead>
-            <tr>
-              <th>Name</th>
-              <th>Stock</th>
-              <th>Sold</th>
-              <th className="hide-mobile">Damaged</th>
-              <th className="hide-mobile">Price</th>
-              <th className="hide-mobile">Amount</th>
-              <th className="hide-mobile">Date Added</th>
-              <th className="hide-mobile">Last Updated</th>
-              <th>Actions</th>
-            </tr>
-          </thead>
-
-          <tbody>
-            {archivedProducts.map((p) => (
-              <tr key={p.id}>
-                <td>{p.name}</td>
-                <td>{p.total || 0}</td>
-                <td>{p.sold || 0}</td>
-                <td className="hide-mobile">{p.damaged || 0}</td>
-                <td className="hide-mobile">₦{p.price || 0}</td>
-                <td className="hide-mobile">
-                  ₦{(p.amount || 0).toLocaleString()}
-                </td>
-                <td className="hide-mobile">{formatTimestamp(p.dateAdded)}</td>
-                <td className="hide-mobile">{formatTimestamp(p.lastUpdated)}</td>
-                <td>
-                  <div className="action-buttons">
-                    {/* ✅ Only show View button on small screens */}
-                    {isMobile && (
-                      <Link to={`/product/${p.id}`}>
-                        <button className="view-btn">View</button>
-                      </Link>
-                    )}
-
-                    {/* ✅ Always show Restore */}
-                    <button
-                      className="unarchive-btn"
-                      onClick={() => handleUnarchive(p.id)}
-                    >
-                      Restore
-                    </button>
-                  </div>
-                </td>
+        <div className="table-container">
+          <table className="inventory-table">
+            <thead>
+              <tr>
+                <th>Name</th>
+                <th>Stock</th>
+                <th>Sold</th>
+                <th className="hide-mobile">Damaged</th>
+                <th className="hide-mobile">Price</th>
+                <th className="hide-mobile">Amount</th>
+                <th className="hide-mobile">Date Added</th>
+                <th className="hide-mobile">Last Updated</th>
+                <th>Actions</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+
+            <tbody>
+              {archivedProducts.map((p) => (
+                <tr key={p.id}>
+                  <td>{p.name}</td>
+                  <td>{p.total || 0}</td>
+                  <td>{p.sold || 0}</td>
+                  <td className="hide-mobile">{p.damaged || 0}</td>
+                  <td className="hide-mobile">₦{p.price || 0}</td>
+                  <td className="hide-mobile">
+                    ₦{(p.amount || 0).toLocaleString()}
+                  </td>
+                  <td className="hide-mobile">{formatTimestamp(p.dateAdded)}</td>
+                  <td className="hide-mobile">{formatTimestamp(p.lastUpdated)}</td>
+
+                  <td>
+                    {/* ✅ Responsive action section */}
+                    {isMobile ? (
+                      <div>
+                        {expandedRow === p.id ? (
+                          <div className="expanded-actions">
+                            <Link to={`/product/${p.id}`}>
+                              <button className="view-btn">View</button>
+                            </Link>
+                            <button
+                              className="unarchive-btn"
+                              onClick={() => handleUnarchive(p.id)}
+                            >
+                              Restore
+                            </button>
+                            <button
+                              className="more-btn"
+                              onClick={() => setExpandedRow(null)}
+                            >
+                              Close
+                            </button>
+                          </div>
+                        ) : (
+                          <button
+                            className="more-btn"
+                            onClick={() => setExpandedRow(p.id)}
+                          >
+                            More
+                          </button>
+                        )}
+                      </div>
+                    ) : (
+                      <div className="action-buttons">
+                        <Link to={`/product/${p.id}`}>
+                          <button className="view-btn">View</button>
+                        </Link>
+                        <button
+                          className="unarchive-btn"
+                          onClick={() => handleUnarchive(p.id)}
+                        >
+                          Restore
+                        </button>
+                      </div>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       )}
 
       <div style={{ marginTop: "20px", textAlign: "center" }}>

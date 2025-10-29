@@ -1,3 +1,4 @@
+// src/RecordSales.js
 import React, { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { db } from "./firebase";
@@ -12,11 +13,11 @@ import {
 
 function RecordSales() {
   const [products, setProducts] = useState([]);
-  const [selectedProduct, setSelectedProduct] = useState("");
-  const [quantitySold, setQuantitySold] = useState("");
-  const [saleType, setSaleType] = useState("unit"); // ✅ "unit" or "pack"
+  const [selectedProducts, setSelectedProducts] = useState([
+    { productId: "", quantity: "", saleType: "unit", amount: 0 },
+  ]); // ✅ Starts with 1 row by default
   const [paymentMethod, setPaymentMethod] = useState("");
-  const [amount, setAmount] = useState("");
+  const [totalAmount, setTotalAmount] = useState(0);
 
   // ✅ Fetch products
   useEffect(() => {
@@ -35,82 +36,114 @@ function RecordSales() {
     fetchProducts();
   }, []);
 
-  // ✅ Auto-calculate amount when inputs change
-  useEffect(() => {
-    const product = products.find((p) => p.name === selectedProduct);
-    if (product && quantitySold) {
-      const qty =
-        saleType === "pack"
-          ? quantitySold * (product.itemsPerPack || 1)
-          : parseInt(quantitySold, 10);
-      setAmount(product.price * qty);
-    } else {
-      setAmount("");
-    }
-  }, [selectedProduct, quantitySold, saleType, products]);
+  // ✅ Handle adding a new product row
+  const handleAddProduct = () => {
+    setSelectedProducts([
+      ...selectedProducts,
+      { productId: "", quantity: "", saleType: "unit", amount: 0 },
+    ]);
+  };
 
+  // ✅ Handle removing a product row
+  const handleRemoveProduct = (index) => {
+    const updated = [...selectedProducts];
+    updated.splice(index, 1);
+    setSelectedProducts(updated);
+    recalculateTotal(updated);
+  };
+
+  // ✅ Handle changes in product selection or quantity
+  const handleChange = (index, field, value) => {
+    const updated = [...selectedProducts];
+    updated[index][field] = value;
+
+    const selectedProduct = products.find(
+      (p) => p.id === updated[index].productId
+    );
+
+    if (selectedProduct && field !== "amount") {
+      const qty =
+        updated[index].saleType === "pack"
+          ? (value && field === "quantity"
+              ? value * (selectedProduct.itemsPerPack || 1)
+              : updated[index].quantity * (selectedProduct.itemsPerPack || 1))
+          : parseInt(updated[index].quantity || 0, 10);
+
+      updated[index].amount = selectedProduct.price * (qty || 0);
+    }
+
+    setSelectedProducts(updated);
+    recalculateTotal(updated);
+  };
+
+  // ✅ Recalculate total amount
+  const recalculateTotal = (list) => {
+    const total = list.reduce((sum, item) => sum + (item.amount || 0), 0);
+    setTotalAmount(total);
+  };
+
+  // ✅ Submit multiple product sales
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    if (!selectedProduct || !quantitySold || !paymentMethod) {
-      alert("Please fill in all fields!");
-      return;
-    }
-
-    const product = products.find((p) => p.name === selectedProduct);
-    if (!product) {
-      alert("Product not found!");
-      return;
-    }
-
-    const qty =
-      saleType === "pack"
-        ? quantitySold * (product.itemsPerPack || 1)
-        : parseInt(quantitySold, 10);
-
-    if (qty > product.total) {
-      alert("❌ Not enough stock available!");
+    if (!selectedProducts.length || !paymentMethod) {
+      alert("Please fill out the form completely!");
       return;
     }
 
     try {
-      // 🔹 Update product stock
-      const productRef = doc(db, "products", product.id);
-      await updateDoc(productRef, {
-        total: (product.total || 0) - qty,
-        sold: (product.sold || 0) + qty,
-        lastUpdated: serverTimestamp(),
-      });
+      for (const item of selectedProducts) {
+        const product = products.find((p) => p.id === item.productId);
+        if (!product) continue;
 
-      // 🔹 Add record to history
-      await addDoc(collection(db, "history"), {
-        productId: product.id,
-        product: product.name,
-        quantity: qty,
-        saleType,
-        action: "Sold",
-        payment: paymentMethod,
-        date: serverTimestamp(),
-        note:
-          saleType === "pack"
-            ? `${quantitySold} pack(s) (${qty} units) sold at ₦${product.price} each`
-            : `${qty} single unit(s) sold at ₦${product.price} each`,
-      });
+        const qty =
+          item.saleType === "pack"
+            ? item.quantity * (product.itemsPerPack || 1)
+            : parseInt(item.quantity, 10);
 
-      alert("✅ Sale recorded successfully!");
+        if (qty > product.total) {
+          alert(`❌ Not enough stock for ${product.name}!`);
+          return;
+        }
+
+        // 🔹 Update product stock
+        const productRef = doc(db, "products", product.id);
+        await updateDoc(productRef, {
+          total: (product.total || 0) - qty,
+          sold: (product.sold || 0) + qty,
+          lastUpdated: serverTimestamp(),
+        });
+
+        // 🔹 Add to history
+        await addDoc(collection(db, "history"), {
+          productId: product.id,
+          product: product.name,
+          quantity: qty,
+          saleType: item.saleType,
+          action: "Sold",
+          payment: paymentMethod,
+          date: serverTimestamp(),
+          note:
+            item.saleType === "pack"
+              ? `${item.quantity} pack(s) (${qty} units) sold at ₦${product.price} each`
+              : `${qty} unit(s) sold at ₦${product.price} each`,
+        });
+      }
+
+      alert("✅ Sale(s) recorded successfully!");
 
       // 🔄 Reset form
-      setQuantitySold("");
-      setSelectedProduct("");
+      setSelectedProducts([
+        { productId: "", quantity: "", saleType: "unit", amount: 0 },
+      ]);
       setPaymentMethod("");
-      setSaleType("unit");
-      setAmount("");
+      setTotalAmount(0);
 
       // 🔄 Refresh product list
       const refreshed = await getDocs(collection(db, "products"));
       setProducts(refreshed.docs.map((doc) => ({ id: doc.id, ...doc.data() })));
     } catch (error) {
-      console.error("Error recording sale:", error);
+      console.error("Error recording sales:", error);
       alert("❌ Could not record sale, please try again.");
     }
   };
@@ -120,38 +153,71 @@ function RecordSales() {
       <h2>🛒 Record Sales</h2>
 
       <form onSubmit={handleSubmit}>
-        <label>Select Product:</label>
-        <select
-          value={selectedProduct}
-          onChange={(e) => setSelectedProduct(e.target.value)}
-          required
-        >
-          <option value="">-- Select a product --</option>
-          {products.map((p) => (
-            <option key={p.id} value={p.name}>
-              {p.name}
-            </option>
-          ))}
-        </select>
+        {selectedProducts.map((item, index) => (
+          <div key={index} className="sale-row">
+            <label>Product {index + 1}:</label>
+            <select
+              value={item.productId}
+              onChange={(e) =>
+                handleChange(index, "productId", e.target.value)
+              }
+              required
+            >
+              <option value="">-- Select a product --</option>
+              {products.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.name}
+                </option>
+              ))}
+            </select>
 
-        <label>Sale Type:</label>
-        <select
-          value={saleType}
-          onChange={(e) => setSaleType(e.target.value)}
-          required
-        >
-          <option value="unit">Single Unit</option>
-          <option value="pack">Pack</option>
-        </select>
+            <label>Sale Type:</label>
+            <select
+              value={item.saleType}
+              onChange={(e) => handleChange(index, "saleType", e.target.value)}
+            >
+              <option value="unit">Single Unit</option>
+              <option value="pack">Pack</option>
+            </select>
 
-        <label>Quantity Sold ({saleType === "pack" ? "Packs" : "Units"}):</label>
-        <input
-          type="number"
-          value={quantitySold}
-          onChange={(e) => setQuantitySold(e.target.value)}
-          required
-          min="1"
-        />
+            <label>
+              Quantity ({item.saleType === "pack" ? "Packs" : "Units"}):
+            </label>
+            <input
+              type="number"
+              value={item.quantity}
+              onChange={(e) => handleChange(index, "quantity", e.target.value)}
+              min="1"
+              required
+            />
+
+            <label>Amount:</label>
+            <input
+              type="text"
+              value={item.amount ? `₦${item.amount}` : ""}
+              readOnly
+            />
+
+            {selectedProducts.length > 1 && (
+              <button
+                type="button"
+                className="remove-btn"
+                onClick={() => handleRemoveProduct(index)}
+              >
+                ❌ Remove
+              </button>
+            )}
+            <hr />
+          </div>
+        ))}
+
+        <button
+          type="button"
+          className="btn-secondary"
+          onClick={handleAddProduct}
+        >
+          ➕ Add Another Product
+        </button>
 
         <label>Payment Method:</label>
         <select
@@ -165,8 +231,7 @@ function RecordSales() {
           <option value="pos">POS</option>
         </select>
 
-        <label>Amount:</label>
-        <input type="text" value={amount ? `₦${amount}` : ""} readOnly />
+        <h3>Total Amount: ₦{totalAmount.toLocaleString()}</h3>
 
         <button type="submit" className="btn-primary">
           Record Sale

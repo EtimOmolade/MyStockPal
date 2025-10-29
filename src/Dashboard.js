@@ -115,7 +115,7 @@ const Dashboard = () => {
               <th>Stock Added</th>
               <th className="hide-mobile">Sold</th>
               <th className="hide-mobile">Damaged</th>
-              <th className="hide-mobile">Remaining</th>
+              <th className="hide-mobile">Current Stock</th>
               <th className="hide-mobile">Revenue (₦)</th>
               
             </tr>

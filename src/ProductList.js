@@ -13,9 +13,28 @@ import { db } from "./firebase";
 function ProductList() {
   const [products, setProducts] = useState([]);
   const [lastAdded, setLastAdded] = useState({});
+  const [dailySold, setDailySold] = useState({});
   const [addQty, setAddQty] = useState({});
   const [dailyAmounts, setDailyAmounts] = useState({});
   const [totalRevenue, setTotalRevenue] = useState(0);
+  const [today, setToday] = useState(() => {
+    const d = new Date();
+    d.setHours(0, 0, 0, 0);
+    return d;
+  });
+
+  // ✅ Automatically refresh date at midnight (so table resets daily)
+  useEffect(() => {
+    const checkMidnight = setInterval(() => {
+      const now = new Date();
+      now.setHours(0, 0, 0, 0);
+      if (now.getTime() !== today.getTime()) {
+        setToday(now);
+      }
+    }, 60 * 1000); // check every 1 minute
+
+    return () => clearInterval(checkMidnight);
+  }, [today]);
 
   // ✅ Fetch products in real-time
   useEffect(() => {
@@ -30,7 +49,7 @@ function ProductList() {
     return () => unsubscribe();
   }, []);
 
-  // ✅ Fetch history and compute *daily* stock added + *daily* revenue
+  // ✅ Fetch *daily* stock added, sold quantities, and revenue
   useEffect(() => {
     const unsubscribe = onSnapshot(collection(db, "history"), (snapshot) => {
       const historyData = snapshot.docs.map((doc) => ({
@@ -39,44 +58,48 @@ function ProductList() {
       }));
 
       const dailyAddedMap = {};
+      const dailySoldMap = {};
       const dailyAmountMap = {};
       let totalRevenueToday = 0;
-
-      const today = new Date();
-      today.setHours(0, 0, 0, 0); // Midnight today
 
       historyData.forEach((record) => {
         if (!record.date?.seconds) return;
         const recordDate = new Date(record.date.seconds * 1000);
         recordDate.setHours(0, 0, 0, 0);
 
-        // ✅ Only count today's stock additions
-        if (record.action === "Stock Added" && recordDate.getTime() === today.getTime()) {
-          if (!dailyAddedMap[record.productId]) dailyAddedMap[record.productId] = 0;
-          dailyAddedMap[record.productId] += record.quantity;
-        }
+        // ✅ Only count today's actions
+        if (recordDate.getTime() === today.getTime()) {
+          if (record.action === "Stock Added") {
+            if (!dailyAddedMap[record.productId]) dailyAddedMap[record.productId] = 0;
+            dailyAddedMap[record.productId] += record.quantity;
+          }
 
-        // ✅ Only count today's sales for daily revenue
-        if (record.action === "Sold" && recordDate.getTime() === today.getTime()) {
-          const product = products.find((p) => p.id === record.productId);
-          const price = product?.price || 0;
-          const amount = record.quantity * price;
+          if (record.action === "Sold") {
+            const product = products.find((p) => p.id === record.productId);
+            const price = product?.price || 0;
+            const amount = record.quantity * price;
 
-          if (!dailyAmountMap[record.productId]) dailyAmountMap[record.productId] = 0;
-          dailyAmountMap[record.productId] += amount;
-          totalRevenueToday += amount;
+            if (!dailySoldMap[record.productId]) dailySoldMap[record.productId] = 0;
+            dailySoldMap[record.productId] += record.quantity;
+
+            if (!dailyAmountMap[record.productId]) dailyAmountMap[record.productId] = 0;
+            dailyAmountMap[record.productId] += amount;
+
+            totalRevenueToday += amount;
+          }
         }
       });
 
-      setLastAdded(dailyAddedMap);  // ✅ Now shows only today's added stock
+      setLastAdded(dailyAddedMap);
+      setDailySold(dailySoldMap);
       setDailyAmounts(dailyAmountMap);
       setTotalRevenue(totalRevenueToday);
     });
 
     return () => unsubscribe();
-  }, [products]);
+  }, [products, today]);
 
-  // ✅ Add stock
+  // ✅ Add stock handler
   const handleAddStock = async (id, name) => {
     const qty = parseInt(addQty[id]);
     if (!qty || qty <= 0) {
@@ -87,7 +110,6 @@ function ProductList() {
     try {
       const productRef = doc(db, "products", id);
       const product = products.find((p) => p.id === id);
-
       if (!product) {
         alert("Product not found.");
         return;
@@ -129,7 +151,7 @@ function ProductList() {
     <div className="inventory-page">
       <h2>📦 Product Inventory</h2>
       <p style={{ fontSize: "14px", color: "#888" }}>
-        Showing data for: <strong>{new Date().toDateString()}</strong>
+        Showing data for: <strong>{today.toDateString()}</strong>
       </p>
 
       {/* 💰 Total Revenue Display */}
@@ -155,11 +177,11 @@ function ProductList() {
             <tr>
               <th>Name</th>
               <th>Stock</th>
-              <th>Sold</th>
+              <th>Sold (Today)</th>
               <th className="hide-mobile">Damaged</th>
               <th className="hide-mobile">Price</th>
-              <th className="hide-mobile">Amount</th>
-              <th className="hide-mobile">Stock Added</th>
+              <th className="hide-mobile">Revenue (Today)</th>
+              <th className="hide-mobile">Stock Added (Today)</th>
               <th className="hide-mobile">Last Updated</th>
               <th className="hide-mobile">Add Stock</th>
               <th>Actions</th>
@@ -169,13 +191,14 @@ function ProductList() {
           <tbody>
             {products.map((p) => {
               const todayAdded = lastAdded[p.id] || 0;
+              const todaySold = dailySold[p.id] || 0;
               const todayAmount = dailyAmounts[p.id] || 0;
 
               return (
                 <tr key={p.id}>
                   <td>{p.name}</td>
                   <td>{p.total || 0}</td>
-                  <td>{p.sold || 0}</td>
+                  <td>{todaySold}</td>
                   <td className="hide-mobile">{p.damaged || 0}</td>
                   <td className="hide-mobile">₦{p.price || "-"}</td>
                   <td className="hide-mobile">₦{todayAmount.toLocaleString()}</td>
@@ -207,7 +230,6 @@ function ProductList() {
                       <Link to={`/product/${p.id}`}>
                         <button className="view-btn">View</button>
                       </Link>
-                     
                     </div>
                   </td>
                 </tr>
