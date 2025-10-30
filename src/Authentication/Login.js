@@ -42,10 +42,11 @@ function Login() {
           required
         />
         <button type="submit">Login</button>
-      </form>
-      <p>
+        <p>
         Don't have an account? <Link to="/signup"><button type="submit">Sign Up</button></Link>
       </p>
+      </form>
+      
     </div>
   );
 }
