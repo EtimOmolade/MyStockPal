@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { doc, getDoc, updateDoc, collection, addDoc, serverTimestamp } from "firebase/firestore";
 import { db } from "../firebase";
-
+import { Link } from "react-router-dom";
 const EditProduct = () => {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -107,6 +107,14 @@ const EditProduct = () => {
           💾 Save Changes
         </button>
       </form>
+       <div style={{ textAlign: "center" }}>
+        <Link to={`/product/${id}`}>
+  <button className="btn-primary" style={{ marginTop: "10px" }}>
+    ⬅ Back
+  </button>
+</Link>
+
+      </div>
     </div>
   );
 };

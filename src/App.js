@@ -60,8 +60,8 @@ function App() {
           {darkMode ? "🌞 Light Mode" : "🌙 Dark Mode"}
         </button>
 
-        <button className="logout-btn" onClick={() => signOut(auth).then(() => alert("Logged out!"))}>
-          🚪 Logout
+        <button className="theme-toggle" onClick={() => signOut(auth).then(() => alert("Logged out!"))}>
+          Logout
         </button>
       </nav>
 

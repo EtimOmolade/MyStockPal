@@ -47,7 +47,7 @@ function Signup() {
           required
         />
 
-        <input
+        <input style={{ marginTop: "2rem" }}
           type="password"
           placeholder="🔑 Password"
           value={password}
@@ -55,9 +55,9 @@ function Signup() {
           required
         />
 
-        <input
+        <input style={{ marginTop: "2rem" }}
           type="password"
-          placeholder="🔁 Confirm Password"
+          placeholder=" Confirm Password"
           value={confirmPassword}
           onChange={(e) => setConfirmPassword(e.target.value)}
           required
@@ -71,7 +71,7 @@ function Signup() {
           </p>
         )}
 
-        <button type="submit">Sign Up</button>
+        <button type="submit" style={{ marginTop: "2rem" }}>Sign Up</button>
 
         <p>
           Already have an account?{" "}

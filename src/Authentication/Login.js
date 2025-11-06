@@ -34,14 +34,14 @@ function Login() {
           onChange={(e) => setEmail(e.target.value)}
           required
         />
-        <input
+        <input style={{ marginTop: "2rem" }}
           type="password"
           placeholder="Password"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
           required
         />
-        <button type="submit">Login</button>
+        <button type="submit" style={{ marginTop: "2rem" }}>Login</button>
         <p>
         Don't have an account? <Link to="/signup"><button type="submit">Sign Up</button></Link>
       </p>
