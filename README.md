@@ -2,7 +2,7 @@
 
 
 *Description*:
-**The Inventory Management Web App** is a modern inventory tracking solution designed to help users efficiently manage stock, sales, and product performance in real time.
+**StockPal** is a modern inventory tracking solution designed to help users efficiently manage stock, sales, and product performance in real time.
 
 This project was built as part of a practical learning journey in web and software development, focusing on **React.js, Firebase**, and data management.
 
