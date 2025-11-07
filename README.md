@@ -42,8 +42,14 @@ This project was built as part of a practical learning journey in web and softwa
 - *Error Handling*: Toast messages for smooth user experience.
 - *Archiving System*: Keep historical product data intact while hiding inactive items.
 - Responsive design
-  
+
 ---
+### *App Previews*
+
+  
+
+<img width="1366" height="615" alt="landing page" src="https://github.com/user-attachments/assets/6c646b9f-c54f-404c-8d24-193a51625b01" />
+
 
 ### *Acknowledgements*
  Special thanks to **Firebase, React**, and the open-source community for their excellent documentation and support.
