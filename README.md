@@ -27,7 +27,7 @@ It demonstrates core frontend and backend integration skills such as:
 
 📅 Automatic timestamps for added and updated products
 
-
+---
 
 🛠️ Tech Stack
 
@@ -41,3 +41,6 @@ Notifications: React Toastify
 
 Build Tool: Vite / Create React App
 
+
+💻 How to Run the App
+1. Clone the Repository
