@@ -1,9 +1,8 @@
-📦 **StockPal** [Stockpal](https://mystockpal.netlify.app/)
+📦 **StockPal** 
 
+Link to [Stockpal](https://mystockpal.netlify.app/) on **Netlify**.
 
-*Description*:
 **StockPal** is a modern inventory tracking solution designed to help users efficiently manage stock, sales, and product performance in real time.
-
 This project was built as part of a practical learning journey in web and software development, focusing on **React.js, Firebase**, and data management.
 
 *It demonstrates core frontend and backend integration skills such as*:
