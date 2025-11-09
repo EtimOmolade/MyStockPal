@@ -1,70 +1,65 @@
-# Getting Started with Create React App
+📦 **StockPal** 
 
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+Link to [Stockpal](https://mystockpal.netlify.app/) on **Netlify**.
 
-## Available Scripts
+**StockPal** is a modern inventory tracking solution designed to help users efficiently manage stock, sales, and product performance in real time.
+This project was built as part of a practical learning journey in web and software development, focusing on **React.js, Firebase**, and data management.
 
-In the project directory, you can run:
+*It demonstrates core frontend and backend integration skills such as*:
+- Dynamic data rendering with React Hooks
+- Real-time database synchronization using Firebase Firestore
+- Clean UI navigation with React Router
+- Smooth user feedback with React Toastify
 
-### `npm start`
+---
+### *Features*
 
-Runs the app in the development mode.\
-Open [http://localhost:3000](http://localhost:3000) to view it in your browser.
+- 📊 View, add, edit, and delete inventory products
+- 🏷️ Track total, sold, and damaged stock
+- 💰 Auto-calculate revenue and remaining items
+- 🗂️ Archive products without deleting data
+- 🔔 Instant feedback with toast notifications
+- 🔄 Real-time data updates via *Firebase*
+- 📅 Automatic timestamps for added and updated products
 
-The page will reload when you make changes.\
-You may also see any lint errors in the console.
+---
 
-### `npm test`
+### *Tech Stack*
 
-Launches the test runner in the interactive watch mode.\
-See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
+- *Frontend*: React.js, JavaScript, CSS
+- *Database & Hosting*: Firebase (Firestore, Hosting)
+- *Routing*: React Router DOM
+- *Notifications*: React Toastify
+- *Build Tool*: Vite / Create React App
 
-### `npm run build`
 
-Builds the app for production to the `build` folder.\
-It correctly bundles React in production mode and optimizes the build for the best performance.
+---
+### *Key Functionalities*
 
-The build is minified and the filenames include the hashes.\
-Your app is ready to be deployed!
+- *Auto Calculations*: Automatically computes revenue and remaining stock.
+- *Smart Timestamps*: Uses Firebase serverTimestamp() for consistent date tracking.
+- *Error Handling*: Toast messages for smooth user experience.
+- *Archiving System*: Keep historical product data intact while hiding inactive items.
+- Responsive design
 
-See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
+---
+### *App Previews*
 
-### `npm run eject`
+  
 
-**Note: this is a one-way operation. Once you `eject`, you can't go back!**
+<img width="1366" height="615" alt="landing page" src="https://github.com/user-attachments/assets/6c646b9f-c54f-404c-8d24-193a51625b01" />
 
-If you aren't satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
 
-Instead, it will copy all the configuration files and the transitive dependencies (webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you're on your own.
+### *Acknowledgements*
+ Special thanks to **Firebase, React**, and the open-source community for their excellent documentation and support.
 
-You don't have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn't feel obligated to use this feature. However we understand that this tool wouldn't be useful if you couldn't customize it when you are ready for it.
+ 
+---
 
-## Learn More
+### *Developer*
+**Omolade Anthonia Etim**
 
-You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
+ Software Developer | Tech Enthusiast
+- [Linkedin](https://www.linkedin.com/in/etim-omolade-1134a5212/)
+- [Email](etimanthoniaomolade17@gmail.com)
 
-To learn React, check out the [React documentation](https://reactjs.org/).
-
-### Code Splitting
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/code-splitting](https://facebook.github.io/create-react-app/docs/code-splitting)
-
-### Analyzing the Bundle Size
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size](https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size)
-
-### Making a Progressive Web App
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app](https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app)
-
-### Advanced Configuration
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/advanced-configuration](https://facebook.github.io/create-react-app/docs/advanced-configuration)
-
-### Deployment
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/deployment](https://facebook.github.io/create-react-app/docs/deployment)
-
-### `npm run build` fails to minify
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify](https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify)
