@@ -183,9 +183,9 @@ function ProductView() {
 
       {/* ✅ Buttons */}
       <div className="action-buttons" style={{ marginTop: "25px" }}>
-        <Link to={`/edit/${id}`}>
+        {/* <Link to={`/edit/${id}`}>
           <button className="edit-btn">Edit</button>
-        </Link>
+        </Link> */}
         <button className="archive-btn" onClick={handleArchive}>
           Archive
         </button>
