@@ -224,32 +224,54 @@ const StockHistory = () => {
               <th>Date</th>
               <th>Product</th>
               <th className="hide-mobile">Actions</th>
+              <th className="hide-mobile">Vendor Name</th>
+              <th className="hide-mobile">Vendor Price</th>
               <th className="hide-mobile">Quantity</th>
               <th className="hide-mobile">Payment Method</th>
               <th className="hide-mobile">Notes</th>
             </tr>
           </thead>
           <tbody>
-            {filteredHistory.map((record) => (
-              <tr key={record.id}>
-                <td>{formatDate(record.date)}</td>
-                <td>{record.product || record.productName || "—"}</td>
-                <td className="hide-mobile">{record.action || "—"}</td>
-                <td className="hide-mobile">{record.quantity ?? 0}</td>
-                <td className="hide-mobile">{record.payment || "—"}</td>
-                <td className="hide-mobile">
-                  {record.note || record.details || "—"}
-                </td>
+            {filteredHistory.map((record) => {
+              const defaultNote =
+                record.quantity && record.amount
+                  ? `Sold ${record.quantity ?? 0} units for ₦${
+                      record.vendorPrice
+                        ? record.vendorPrice.toLocaleString()
+                        : record.productPrice
+                        ? record.productPrice.toLocaleString()
+                        : "0"
+                    } each, total ₦${record.amount.toLocaleString()}`
+                  : "—";
 
-                {/* ✅ Mobile “View” button (only visible on small screens) */}
-                <td className="show-mobile action-buttons">
-                  <Link to={`/stock-history/${record.id}`}>
-                    <button className="view-btn">View</button>
-                  </Link>
-                </td>
-              </tr>
-            ))}
+              return (
+                <tr key={record.id}>
+                  <td>{formatDate(record.date)}</td>
+                  <td>{record.product || record.productName || "—"}</td>
+                  <td className="hide-mobile">{record.action || "—"}</td>
+                  <td className="hide-mobile">{record.vendorName === '' ? "Shop" : record.vendorName}</td>
+                  <td className="hide-mobile">
+                    {record.vendorPrice
+                      ? `₦${record.vendorPrice.toLocaleString()}`
+                      : "-"}
+                  </td>
+                  <td className="hide-mobile">{record.quantity ?? 0}</td>
+                  <td className="hide-mobile">{record.payment || "—"}</td>
+                  <td className="hide-mobile">
+                    {record.note || record.details || defaultNote}
+                  </td>
+
+                  {/* ✅ Mobile view */}
+                  <td className="show-mobile action-buttons">
+                    <Link to={`/stock-history/${record.id}`}>
+                      <button className="view-btn">View</button>
+                    </Link>
+                  </td>
+                </tr>
+              );
+            })}
           </tbody>
+
         </table>
       )}
     </div>

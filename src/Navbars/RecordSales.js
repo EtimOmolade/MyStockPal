@@ -1,4 +1,3 @@
-// src/RecordSales.js
 import React, { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { db } from "../firebase";
@@ -11,83 +10,86 @@ import {
   serverTimestamp,
 } from "firebase/firestore";
 
+const emptyRow = {
+  productId: "",
+  quantity: "",
+  saleType: "unit",
+  amount: "",
+  forVendor: "no",
+  vendorName: "",
+  vendorPrice: "",
+  productPrice: "",
+};
+
 function RecordSales() {
   const [products, setProducts] = useState([]);
   const [selectedProducts, setSelectedProducts] = useState([
-    { productId: "", quantity: "", saleType: "unit", amount: 0 },
-  ]); // ✅ Starts with 1 row by default
+    { ...emptyRow }, // ✅ CLONED — no shared reference
+  ]);
   const [paymentMethod, setPaymentMethod] = useState("");
   const [totalAmount, setTotalAmount] = useState(0);
 
-  // ✅ Fetch products
+  // 🔹 Fetch products
   useEffect(() => {
     const fetchProducts = async () => {
-      try {
-        const querySnapshot = await getDocs(collection(db, "products"));
-        const data = querySnapshot.docs.map((doc) => ({
-          id: doc.id,
-          ...doc.data(),
-        }));
-        setProducts(data);
-      } catch (error) {
-        console.error("Error fetching products:", error);
-      }
+      const snapshot = await getDocs(collection(db, "products"));
+      setProducts(snapshot.docs.map((d) => ({ id: d.id, ...d.data() })));
     };
     fetchProducts();
   }, []);
 
-  // ✅ Handle adding a new product row
+  // 🔹 Add empty row (fresh clone every time)
   const handleAddProduct = () => {
-    setSelectedProducts([
-      ...selectedProducts,
-      { productId: "", quantity: "", saleType: "unit", amount: 0 },
-    ]);
+    setSelectedProducts((prev) => [...prev, { ...emptyRow }]);
   };
 
-  // ✅ Handle removing a product row
+  // 🔹 Remove row
   const handleRemoveProduct = (index) => {
-    const updated = [...selectedProducts];
-    updated.splice(index, 1);
+    const updated = selectedProducts.filter((_, i) => i !== index);
     setSelectedProducts(updated);
     recalculateTotal(updated);
   };
 
-  // ✅ Handle changes in product selection or quantity
+  // 🔹 Handle changes & pricing logic
   const handleChange = (index, field, value) => {
     const updated = [...selectedProducts];
-    updated[index][field] = value;
+    updated[index] = { ...updated[index], [field]: value }; // ✅ clone row
 
-    const selectedProduct = products.find(
+    const product = products.find(
       (p) => p.id === updated[index].productId
     );
 
-    if (selectedProduct && field !== "amount") {
-      const qty =
+    if (product) {
+      const quantity =
         updated[index].saleType === "pack"
-          ? (value && field === "quantity"
-              ? value * (selectedProduct.itemsPerPack || 1)
-              : updated[index].quantity * (selectedProduct.itemsPerPack || 1))
-          : parseInt(updated[index].quantity || 0, 10);
+          ? Number(updated[index].quantity || 0) *
+            (product.itemsPerPack || 1)
+          : Number(updated[index].quantity || 0);
 
-      updated[index].amount = selectedProduct.price * (qty || 0);
+      updated[index].amount =
+        updated[index].forVendor === "yes"
+          ? Number(updated[index].vendorPrice || 0) * quantity
+          : product.price * quantity;
+
+      updated[index].productPrice = product.price;
+      
     }
 
     setSelectedProducts(updated);
     recalculateTotal(updated);
   };
 
-  // ✅ Recalculate total amount
+  // 🔹 Total
   const recalculateTotal = (list) => {
-    const total = list.reduce((sum, item) => sum + (item.amount || 0), 0);
-    setTotalAmount(total);
+    setTotalAmount(list.reduce((sum, i) => sum + (i.amount || 0), 0));
   };
 
-  // ✅ Submit multiple product sales
+  // 🔹 Submit
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    if (!selectedProducts.length || !paymentMethod) {
-      alert("Please fill out the form completely!");
+    if (!paymentMethod) {
+      alert("Please select payment method");
       return;
     }
 
@@ -99,52 +101,43 @@ function RecordSales() {
         const qty =
           item.saleType === "pack"
             ? item.quantity * (product.itemsPerPack || 1)
-            : parseInt(item.quantity, 10);
+            : Number(item.quantity);
 
         if (qty > product.total) {
-          alert(`❌ Not enough stock for ${product.name}!`);
+          alert(`Not enough stock for ${product.name}`);
           return;
         }
 
-        // 🔹 Update product stock
-        const productRef = doc(db, "products", product.id);
-        await updateDoc(productRef, {
-          total: (product.total || 0) - qty,
+        await updateDoc(doc(db, "products", product.id), {
+          total: product.total - qty,
           sold: (product.sold || 0) + qty,
           lastUpdated: serverTimestamp(),
         });
 
-        // 🔹 Add to history
         await addDoc(collection(db, "history"), {
           productId: product.id,
           product: product.name,
           quantity: qty,
           saleType: item.saleType,
-          action: "Sold",
+          forVendor: item.forVendor,
+          vendorName: item.forVendor === "yes" ? item.vendorName : "",
+          vendorPrice: item.forVendor === "yes" ? item.vendorPrice : 0,
+          productPrice: item.productPrice,
+          amount: item.amount,
           payment: paymentMethod,
+          action: "Sold",
           date: serverTimestamp(),
-          note:
-            item.saleType === "pack"
-              ? `${item.quantity} pack(s) (${qty} units) sold at ₦${product.price} each`
-              : `${qty} unit(s) sold at ₦${product.price} each`,
         });
       }
 
-      alert("✅ Sale(s) recorded successfully!");
+      alert("✅ Sale recorded");
 
-      // 🔄 Reset form
-      setSelectedProducts([
-        { productId: "", quantity: "", saleType: "unit", amount: 0 },
-      ]);
+      setSelectedProducts([{ ...emptyRow }]);
       setPaymentMethod("");
       setTotalAmount(0);
-
-      // 🔄 Refresh product list
-      const refreshed = await getDocs(collection(db, "products"));
-      setProducts(refreshed.docs.map((doc) => ({ id: doc.id, ...doc.data() })));
-    } catch (error) {
-      console.error("Error recording sales:", error);
-      alert("❌ Could not record sale, please try again.");
+    } catch (err) {
+      console.error(err);
+      alert("❌ Error recording sale");
     }
   };
 
@@ -155,7 +148,7 @@ function RecordSales() {
       <form onSubmit={handleSubmit}>
         {selectedProducts.map((item, index) => (
           <div key={index} className="sale-row">
-            <label>Product {index + 1}:</label>
+            <label>Product {index + 1}</label>
             <select
               value={item.productId}
               onChange={(e) =>
@@ -163,7 +156,7 @@ function RecordSales() {
               }
               required
             >
-              <option value="">-- Select a product --</option>
+              <option value="">-- Select product --</option>
               {products.map((p) => (
                 <option key={p.id} value={p.id}>
                   {p.name}
@@ -171,61 +164,117 @@ function RecordSales() {
               ))}
             </select>
 
-            <label>Sale Type:</label>
+            <label>Sale Type</label>
             <select
               value={item.saleType}
-              onChange={(e) => handleChange(index, "saleType", e.target.value)}
+              onChange={(e) =>
+                handleChange(index, "saleType", e.target.value)
+              }
             >
-              <option value="unit">Single Unit</option>
+              <option value="unit">Unit</option>
               <option value="pack">Pack</option>
             </select>
 
             <label>
-              Quantity ({item.saleType === "pack" ? "Packs" : "Units"}):
+              Quantity ({item.saleType === "pack" ? "Packs" : "Units"})
             </label>
             <input
               type="number"
-              value={item.quantity}
-              onChange={(e) => handleChange(index, "quantity", e.target.value)}
               min="1"
+              value={item.quantity}
+              onChange={(e) =>
+                handleChange(index, "quantity", Number(e.target.value))
+              }
               required
             />
 
-            <label>Amount:</label>
+            <label>Is this for a vendor?</label>
+
+            {/* ✅ HORIZONTAL RADIOS */}
+            <div style={{ display: "flex", gap: "20px", marginBottom: "10px" }}>
+              <label>
+                <input
+                  type="radio"
+                  name={`vendor-${index}`}
+                  checked={item.forVendor === "yes"}
+                  onChange={() =>
+                    handleChange(index, "forVendor", "yes")
+                  }
+                />{" "}
+                Yes
+              </label>
+
+              <label>
+                <input
+                  type="radio"
+                  name={`vendor-${index}`}
+                  checked={item.forVendor === "no"}
+                  onChange={() =>
+                    handleChange(index, "forVendor", "no")
+                  }
+                />{" "}
+                No
+              </label>
+            </div>
+
+            {item.forVendor === "yes" && (
+              <>
+                <label>Vendor Name</label>
+                <input
+                  type="text"
+                  value={item.vendorName}
+                  onChange={(e) =>
+                    handleChange(index, "vendorName", e.target.value)
+                  }
+                  required
+                />
+
+                <label>Vendor Price (₦)</label>
+                <input
+                  type="number"
+                  min="0"
+                  value={item.vendorPrice}
+                  onChange={(e) =>
+                    handleChange(index, "vendorPrice", Number(e.target.value))
+                  }
+                  required
+                />
+              </>
+            )}
+
+            <label>Amount</label>
             <input
               type="text"
-              value={item.amount ? `₦${item.amount}` : ""}
+              value={
+                item.amount ? `₦${item.amount.toLocaleString()}` : ""
+              }
               readOnly
             />
 
             {selectedProducts.length > 1 && (
               <button
                 type="button"
-                className="remove-btn"
                 onClick={() => handleRemoveProduct(index)}
               >
                 ❌ Remove
               </button>
             )}
+
             <hr />
           </div>
         ))}
 
-        <button
-          type="button"
-          className="btn-secondary"
-          onClick={handleAddProduct}
-        >
+        <button type="button" onClick={handleAddProduct}>
           ➕ Add Another Product
         </button>
 
-        <label>Payment Method:</label>
+        <label>Payment Method</label>
         <select
           value={paymentMethod}
           onChange={(e) => setPaymentMethod(e.target.value)}
           required
         >
-          <option value="">-- Select payment method --</option>
+          <option value="">-- Select payment --</option>
           <option value="cash">Cash</option>
           <option value="transfer">Transfer</option>
           <option value="pos">POS</option>
@@ -233,18 +282,14 @@ function RecordSales() {
 
         <h3>Total Amount: ₦{totalAmount.toLocaleString()}</h3>
 
-        <button type="submit" className="btn-primary">
-          Record Sale
-        </button>
+        <button type="submit">Record Sale</button>
       </form>
 
-      <div style={{ textAlign: "center" }}>
-        <Link to="/">
-          <button className="btn-primary" style={{ marginTop: "10px" }}>
-            ⬅ Back to Products
-          </button>
-        </Link>
-      </div>
+      <Link to="/">
+        <button style={{ marginTop: "10px" }}>
+          ⬅ Back to Products
+        </button>
+      </Link>
     </div>
   );
 }
