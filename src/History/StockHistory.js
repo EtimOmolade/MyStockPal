@@ -1,4 +1,9 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, {
+  useEffect,
+  useMemo,
+  useState,
+  useCallback,
+} from "react";
 import { db } from "../firebase";
 import { collection, getDocs } from "firebase/firestore";
 import { Link } from "react-router-dom";
@@ -14,7 +19,7 @@ const StockHistory = () => {
   const [endDate, setEndDate] = useState("");
 
   /* ------------------ DATE HELPERS ------------------ */
-  const parseToDate = (value) => {
+  const parseToDate = useCallback((value) => {
     if (!value && value !== 0) return null;
 
     if (typeof value === "object") {
@@ -41,24 +46,30 @@ const StockHistory = () => {
     }
 
     return null;
-  };
+  }, []);
 
-  const getTimestampValue = (value) => {
-    const d = parseToDate(value);
-    return d ? d.getTime() : 0;
-  };
+  const getTimestampValue = useCallback(
+    (value) => {
+      const d = parseToDate(value);
+      return d ? d.getTime() : 0;
+    },
+    [parseToDate]
+  );
 
-  const formatDate = (value) => {
-    const d = parseToDate(value);
-    return d ? d.toLocaleString() : "—";
-  };
+  const formatDate = useCallback(
+    (value) => {
+      const d = parseToDate(value);
+      return d ? d.toLocaleString() : "—";
+    },
+    [parseToDate]
+  );
 
   /* ------------------ FETCH DATA ------------------ */
   useEffect(() => {
     const fetchData = async () => {
       try {
         const historySnap = await getDocs(collection(db, "history"));
-        let historyData = historySnap.docs.map((doc) => ({
+        const historyData = historySnap.docs.map((doc) => ({
           id: doc.id,
           ...doc.data(),
         }));
@@ -71,7 +82,8 @@ const StockHistory = () => {
 
         historyData.sort(
           (a, b) =>
-            getTimestampValue(b.date) - getTimestampValue(a.date)
+            getTimestampValue(b.date) -
+            getTimestampValue(a.date)
         );
 
         setHistory(historyData);
@@ -83,50 +95,57 @@ const StockHistory = () => {
     };
 
     fetchData();
-  }, []);
+  }, [getTimestampValue]);
 
-  /* ------------------ VENDOR DROPDOWN DATA ------------------ */
+  /* ------------------ VENDOR DROPDOWN (DEDUPED) ------------------ */
   const vendors = useMemo(() => {
-    const set = new Set();
+    const map = new Map();
 
     history.forEach((r) => {
-      if (r.vendorName && r.vendorName.trim() !== "") {
-        set.add(r.vendorName.trim());
-      } else {
-        set.add("Shop");
+      const raw =
+        r.vendorName && r.vendorName.trim() !== ""
+          ? r.vendorName
+          : "Shop";
+
+      const key = raw.toLowerCase().trim();
+
+      if (!map.has(key)) {
+        map.set(key, raw.trim());
       }
     });
 
-    return ["all", ...Array.from(set).sort()];
+    return ["all", ...Array.from(map.values()).sort()];
   }, [history]);
 
   /* ------------------ LIVE FILTERING ------------------ */
   useEffect(() => {
     let filtered = [...history];
 
-    // Product filter
+    // ✅ Product filter
     if (selectedProduct !== "all") {
+      const product = selectedProduct.toLowerCase().trim();
       filtered = filtered.filter(
         (r) =>
           r.product &&
-          r.product.toLowerCase().trim() ===
-            selectedProduct.toLowerCase()
+          r.product.toLowerCase().trim() === product
       );
     }
 
-    // Vendor filter
+    // ✅ Vendor filter (FIXED & NORMALIZED)
     if (selectedVendor !== "all") {
+      const selected = selectedVendor.toLowerCase().trim();
+
       filtered = filtered.filter((r) => {
         const vendor =
           r.vendorName && r.vendorName.trim() !== ""
             ? r.vendorName
             : "Shop";
 
-        return vendor === selectedVendor;
+        return vendor.toLowerCase().trim() === selected;
       });
     }
 
-    // Date filter
+    // ✅ Date filter
     if (startDate || endDate) {
       const startTime = startDate
         ? new Date(startDate).getTime()
@@ -145,11 +164,19 @@ const StockHistory = () => {
 
     filtered.sort(
       (a, b) =>
-        getTimestampValue(b.date) - getTimestampValue(a.date)
+        getTimestampValue(b.date) -
+        getTimestampValue(a.date)
     );
 
     setFilteredHistory(filtered);
-  }, [history, selectedProduct, selectedVendor, startDate, endDate]);
+  }, [
+    history,
+    selectedProduct,
+    selectedVendor,
+    startDate,
+    endDate,
+    getTimestampValue,
+  ]);
 
   const resetFilters = () => {
     setSelectedProduct("all");
@@ -163,11 +190,13 @@ const StockHistory = () => {
     <div className="table-container">
       <h2>📜 Stock History</h2>
 
-      {/* ------------------ FILTERS (MOBILE FRIENDLY) ------------------ */}
+      {/* ------------------ FILTERS ------------------ */}
       <div className="filter-container filter-grid">
         <select
           value={selectedProduct}
-          onChange={(e) => setSelectedProduct(e.target.value)}
+          onChange={(e) =>
+            setSelectedProduct(e.target.value)
+          }
         >
           <option value="all">All Products</option>
           {products.map((p) => (
@@ -179,7 +208,9 @@ const StockHistory = () => {
 
         <select
           value={selectedVendor}
-          onChange={(e) => setSelectedVendor(e.target.value)}
+          onChange={(e) =>
+            setSelectedVendor(e.target.value)
+          }
         >
           {vendors.map((v) => (
             <option key={v} value={v}>
@@ -200,7 +231,10 @@ const StockHistory = () => {
           onChange={(e) => setEndDate(e.target.value)}
         />
 
-        <button onClick={resetFilters} className="filter-button">
+        <button
+          onClick={resetFilters}
+          className="filter-button"
+        >
           Reset
         </button>
       </div>
@@ -215,7 +249,7 @@ const StockHistory = () => {
               <th>Date</th>
               <th>Product</th>
               <th>Vendor</th>
-              <th>Action</th>
+              <th className="hide-mobile">Action</th>
               <th className="hide-mobile">Vendor Price</th>
               <th className="hide-mobile">Qty</th>
               <th className="hide-mobile">Payment</th>
@@ -225,28 +259,32 @@ const StockHistory = () => {
 
           <tbody>
             {filteredHistory.map((record) => {
+              const unitPrice =
+                record.vendorPrice ||
+                record.productPrice ||
+                0;
+
               const defaultNote =
                 record.quantity && record.amount
-                  ? `Sold ${record.quantity ?? 0} units for ₦${
-                      record.vendorPrice
-                        ? record.vendorPrice.toLocaleString()
-                        : record.productPrice
-                        ? record.productPrice.toLocaleString()
-                        : "0"
-                    } each, total ₦${record.amount.toLocaleString()}`
+                  ? `Sold ${record.quantity} units for ₦${unitPrice.toLocaleString()} each, total ₦${record.amount.toLocaleString()}`
                   : "—";
 
               return (
                 <tr key={record.id}>
                   <td>{formatDate(record.date)}</td>
-                  <td>{record.product || record.productName || "—"}</td>
+                  <td>
+                    {record.product ||
+                      record.productName ||
+                      "—"}
+                  </td>
                   <td>
                     {record.vendorName?.trim()
                       ? record.vendorName
                       : "Shop"}
                   </td>
-<td className="hide-mobile">{record.action || "—"}</td>
-
+                  <td className="hide-mobile">
+                    {record.action || "—"}
+                  </td>
                   <td className="hide-mobile">
                     {record.vendorPrice
                       ? `₦${record.vendorPrice.toLocaleString()}`
@@ -266,7 +304,9 @@ const StockHistory = () => {
 
                   <td className="show-mobile action-buttons">
                     <Link to={`/stock-history/${record.id}`}>
-                      <button className="view-btn">View</button>
+                      <button className="view-btn">
+                        View
+                      </button>
                     </Link>
                   </td>
                 </tr>
