@@ -15,8 +15,6 @@ const emptyRow = {
   quantity: "",
   saleType: "unit",
   amount: "",
-  forVendor: "no",
-  vendorName: "",
   vendorPrice: "",
   productPrice: "",
 };
@@ -24,12 +22,15 @@ const emptyRow = {
 function RecordSales() {
   const [products, setProducts] = useState([]);
   const [selectedProducts, setSelectedProducts] = useState([
-    { ...emptyRow }, // ✅ CLONED — no shared reference
+    { ...emptyRow },
   ]);
+
+  const [isVendorSale, setIsVendorSale] = useState(null);
+  const [vendorName, setVendorName] = useState("");
+
   const [paymentMethod, setPaymentMethod] = useState("");
   const [totalAmount, setTotalAmount] = useState(0);
 
-  // 🔹 Fetch products
   useEffect(() => {
     const fetchProducts = async () => {
       const snapshot = await getDocs(collection(db, "products"));
@@ -38,22 +39,67 @@ function RecordSales() {
     fetchProducts();
   }, []);
 
-  // 🔹 Add empty row (fresh clone every time)
   const handleAddProduct = () => {
     setSelectedProducts((prev) => [...prev, { ...emptyRow }]);
   };
 
-  // 🔹 Remove row
   const handleRemoveProduct = (index) => {
     const updated = selectedProducts.filter((_, i) => i !== index);
     setSelectedProducts(updated);
     recalculateTotal(updated);
   };
 
-  // 🔹 Handle changes & pricing logic
+  /* ✅ FIXED vendor toggle */
+  const handleVendorToggle = (value) => {
+    setIsVendorSale(value);
+
+    if (value === "no") {
+      setVendorName("");
+
+      const recalculated = selectedProducts.map((item) => {
+        const product = products.find(
+          (p) => p.id === item.productId
+        );
+
+        if (!product || !item.quantity) {
+          return {
+            ...item,
+            vendorPrice: "",
+            amount: "",
+          };
+        }
+
+        const quantity =
+          item.saleType === "pack"
+            ? Number(item.quantity) * (product.itemsPerPack || 1)
+            : Number(item.quantity);
+
+        return {
+          ...item,
+          vendorPrice: "",
+          amount: product.price * quantity,
+          productPrice: product.price,
+        };
+      });
+
+      setSelectedProducts(recalculated);
+      recalculateTotal(recalculated);
+    }
+
+    if (value === "yes") {
+      const cleared = selectedProducts.map((item) => ({
+        ...item,
+        amount: "",
+      }));
+
+      setSelectedProducts(cleared);
+      recalculateTotal(cleared);
+    }
+  };
+
   const handleChange = (index, field, value) => {
     const updated = [...selectedProducts];
-    updated[index] = { ...updated[index], [field]: value }; // ✅ clone row
+    updated[index] = { ...updated[index], [field]: value };
 
     const product = products.find(
       (p) => p.id === updated[index].productId
@@ -67,29 +113,31 @@ function RecordSales() {
           : Number(updated[index].quantity || 0);
 
       updated[index].amount =
-        updated[index].forVendor === "yes"
+        isVendorSale === "yes"
           ? Number(updated[index].vendorPrice || 0) * quantity
           : product.price * quantity;
 
       updated[index].productPrice = product.price;
-      
     }
 
     setSelectedProducts(updated);
     recalculateTotal(updated);
   };
 
-  // 🔹 Total
   const recalculateTotal = (list) => {
     setTotalAmount(list.reduce((sum, i) => sum + (i.amount || 0), 0));
   };
 
-  // 🔹 Submit
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    if (!paymentMethod) {
-      alert("Please select payment method");
+    if (!paymentMethod || !isVendorSale) {
+      alert("Please complete all required fields");
+      return;
+    }
+
+    if (isVendorSale === "yes" && !vendorName) {
+      alert("Please enter vendor name");
       return;
     }
 
@@ -119,9 +167,12 @@ function RecordSales() {
           product: product.name,
           quantity: qty,
           saleType: item.saleType,
-          forVendor: item.forVendor,
-          vendorName: item.forVendor === "yes" ? item.vendorName : "",
-          vendorPrice: item.forVendor === "yes" ? item.vendorPrice : 0,
+
+          forVendor: isVendorSale === "yes",
+          vendorName: isVendorSale === "yes" ? vendorName : "",
+          vendorPrice:
+            isVendorSale === "yes" ? Number(item.vendorPrice) : 0,
+
           productPrice: item.productPrice,
           amount: item.amount,
           payment: paymentMethod,
@@ -130,9 +181,11 @@ function RecordSales() {
         });
       }
 
-      alert("✅ Sale recorded");
+      alert("✅ Sale recorded successfully");
 
       setSelectedProducts([{ ...emptyRow }]);
+      setIsVendorSale(null);
+      setVendorName("");
       setPaymentMethod("");
       setTotalAmount(0);
     } catch (err) {
@@ -146,6 +199,41 @@ function RecordSales() {
       <h2>🛒 Record Sales</h2>
 
       <form onSubmit={handleSubmit}>
+        <label>Is this sale for a vendor?</label>
+        <div style={{ display: "flex", gap: "20px", marginBottom: "15px" }}>
+          <label>
+            <input
+              type="radio"
+              name="vendor-sale"
+              checked={isVendorSale === "yes"}
+              onChange={() => handleVendorToggle("yes")}
+            />{" "}
+            Yes
+          </label>
+
+          <label>
+            <input
+              type="radio"
+              name="vendor-sale"
+              checked={isVendorSale === "no"}
+              onChange={() => handleVendorToggle("no")}
+            />{" "}
+            No
+          </label>
+        </div>
+
+        {isVendorSale === "yes" && (
+          <>
+            <label>Vendor Name</label>
+            <input
+              type="text"
+              value={vendorName}
+              onChange={(e) => setVendorName(e.target.value)}
+              required
+            />
+          </>
+        )}
+
         {selectedProducts.map((item, index) => (
           <div key={index} className="sale-row">
             <label>Product {index + 1}</label>
@@ -175,6 +263,25 @@ function RecordSales() {
               <option value="pack">Pack</option>
             </select>
 
+            {isVendorSale === "yes" && (
+              <>
+                <label>Vendor Price (₦)</label>
+                <input
+                  type="number"
+                  min="0"
+                  value={item.vendorPrice}
+                  onChange={(e) =>
+                    handleChange(
+                      index,
+                      "vendorPrice",
+                      Number(e.target.value)
+                    )
+                  }
+                  required
+                />
+              </>
+            )}
+
             <label>
               Quantity ({item.saleType === "pack" ? "Packs" : "Units"})
             </label>
@@ -183,64 +290,14 @@ function RecordSales() {
               min="1"
               value={item.quantity}
               onChange={(e) =>
-                handleChange(index, "quantity", Number(e.target.value))
+                handleChange(
+                  index,
+                  "quantity",
+                  Number(e.target.value)
+                )
               }
               required
             />
-
-            <label>Is this for a vendor?</label>
-
-            {/* ✅ HORIZONTAL RADIOS */}
-            <div style={{ display: "flex", gap: "20px", marginBottom: "10px" }}>
-              <label>
-                <input
-                  type="radio"
-                  name={`vendor-${index}`}
-                  checked={item.forVendor === "yes"}
-                  onChange={() =>
-                    handleChange(index, "forVendor", "yes")
-                  }
-                />{" "}
-                Yes
-              </label>
-
-              <label>
-                <input
-                  type="radio"
-                  name={`vendor-${index}`}
-                  checked={item.forVendor === "no"}
-                  onChange={() =>
-                    handleChange(index, "forVendor", "no")
-                  }
-                />{" "}
-                No
-              </label>
-            </div>
-
-            {item.forVendor === "yes" && (
-              <>
-                <label>Vendor Name</label>
-                <input
-                  type="text"
-                  value={item.vendorName}
-                  onChange={(e) =>
-                    handleChange(index, "vendorName", e.target.value)
-                  }
-                  required
-                />
-
-                <label>Vendor Price (₦)</label>
-                <input
-                  type="number"
-                  min="0"
-                  value={item.vendorPrice}
-                  onChange={(e) =>
-                    handleChange(index, "vendorPrice", Number(e.target.value))
-                  }
-                  required
-                />
-              </>
-            )}
 
             <label>Amount</label>
             <input
@@ -285,11 +342,13 @@ function RecordSales() {
         <button type="submit">Record Sale</button>
       </form>
 
+      <div style={{ textAlign: "center" }}></div>
       <Link to="/">
         <button style={{ marginTop: "10px" }}>
           ⬅ Back to Products
         </button>
       </Link>
+      
     </div>
   );
 }
