@@ -5,10 +5,13 @@ import {
   doc,
   onSnapshot,
   updateDoc,
+  deleteDoc,
   serverTimestamp,
   collection,
+  getDoc,
 } from "firebase/firestore";
-import { db } from "../firebase";
+import { db, auth } from "../firebase";
+import { onAuthStateChanged } from "firebase/auth";
 import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 
@@ -17,6 +20,7 @@ function ProductView() {
   const [product, setProduct] = useState(null);
   const [dailySold, setDailySold] = useState(0);
   const [dailyAmount, setDailyAmount] = useState(0);
+  const [userRole, setUserRole] = useState(null);
   const [today, setToday] = useState(() => {
     const d = new Date();
     d.setHours(0, 0, 0, 0);
@@ -24,6 +28,21 @@ function ProductView() {
   });
 
   const navigate = useNavigate();
+
+  // ✅ Fetch User Role
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, async (user) => {
+      if (user) {
+        const userDoc = await getDoc(doc(db, "users", user.uid));
+        if (userDoc.exists()) {
+          setUserRole(userDoc.data().role);
+        }
+      } else {
+        setUserRole(null);
+      }
+    });
+    return () => unsubscribe();
+  }, []);
 
   // ✅ Auto-refresh at midnight
   useEffect(() => {
@@ -87,6 +106,20 @@ function ProductView() {
 
     return () => unsubscribe();
   }, [product, today]);
+
+  // ✅ Delete Product (Admin Only)
+  const handleDelete = async () => {
+    if (!window.confirm("Are you sure you want to PERMANENTLY DELETE this product? This cannot be undone.")) return;
+
+    try {
+      await deleteDoc(doc(db, "products", id));
+      toast.success("🗑️ Product deleted successfully!");
+      navigate("/");
+    } catch (err) {
+      console.error("Error deleting product:", err);
+      toast.error("❌ Failed to delete product.");
+    }
+  };
 
   // ✅ Archive product
   const handleArchive = async () => {
@@ -182,10 +215,22 @@ function ProductView() {
       </div>
 
       {/* ✅ Buttons */}
-      <div className="action-buttons" style={{ marginTop: "25px" }}>
-        {/* <Link to={`/edit/${id}`}>
-          <button className="edit-btn">Edit</button>
-        </Link> */}
+      <div className="action-buttons" style={{ marginTop: "25px", display: "flex", gap: "10px" }}>
+        {userRole === "admin" && (
+          <>
+            <Link to={`/edit/${id}`}>
+              <button className="edit-btn">Edit</button>
+            </Link>
+            <button
+              className="archive-btn"
+              onClick={handleDelete}
+              style={{ backgroundColor: "#d32f2f" }} // Red for delete
+            >
+              Delete
+            </button>
+          </>
+        )}
+
         <button className="archive-btn" onClick={handleArchive}>
           Archive
         </button>

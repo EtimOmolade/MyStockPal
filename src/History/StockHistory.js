@@ -26,9 +26,9 @@ const StockHistory = () => {
       if (value.seconds) {
         return new Date(
           value.seconds * 1000 +
-            (value.nanoseconds
-              ? Math.round(value.nanoseconds / 1e6)
-              : 0)
+          (value.nanoseconds
+            ? Math.round(value.nanoseconds / 1e6)
+            : 0)
         );
       }
       if (typeof value.toDate === "function") return value.toDate();
@@ -152,8 +152,8 @@ const StockHistory = () => {
         : -Infinity;
       const endTime = endDate
         ? new Date(endDate).getTime() +
-          24 * 60 * 60 * 1000 -
-          1
+        24 * 60 * 60 * 1000 -
+        1
         : Infinity;
 
       filtered = filtered.filter((r) => {
@@ -254,6 +254,7 @@ const StockHistory = () => {
               <th className="hide-mobile">Qty</th>
               <th className="hide-mobile">Payment</th>
               <th className="hide-mobile">Notes</th>
+              <th>View</th>
             </tr>
           </thead>
 
@@ -302,9 +303,9 @@ const StockHistory = () => {
                       defaultNote}
                   </td>
 
-                  <td className="show-mobile action-buttons">
+                  <td>
                     <Link to={`/stock-history/${record.id}`}>
-                      <button className="view-btn">
+                      <button className="view-btn" style={{ padding: "0.5rem 1rem", fontSize: "0.9rem" }}>
                         View
                       </button>
                     </Link>

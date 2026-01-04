@@ -342,12 +342,13 @@ function RecordSales() {
         <button type="submit">Record Sale</button>
       </form>
 
-      <div style={{ textAlign: "center" }}></div>
-      <Link to="/">
-        <button style={{ marginTop: "10px" }}>
-          ⬅ Back to Products
-        </button>
-      </Link>
+      <div style={{ textAlign: "center" }}>
+        <Link to="/">
+          <button className="btn-primary" style={{ marginTop: "10px" }}>
+            ⬅ Back to Products
+          </button>
+        </Link>
+      </div>
       
     </div>
   );

@@ -2,7 +2,8 @@
 import React, { useState } from "react";
 import { auth } from "../firebase";
 import { signInWithEmailAndPassword } from "firebase/auth";
-import { useNavigate, Link } from "react-router-dom";
+import { useNavigate} from "react-router-dom";
+// import { Link } from "react-router-dom";
 
 function Login() {
   const [email, setEmail] = useState("");
@@ -56,9 +57,9 @@ function Login() {
           </span>
         </div>
         <button type="submit" style={{ marginTop: "2rem" }}>Login</button>
-        <p>
+        {/* <p>
         Don't have an account? <Link to="/signup"><button type="submit">Sign Up</button></Link>
-      </p>
+      </p> */}
       </form>
       
     </div>
