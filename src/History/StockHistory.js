@@ -150,7 +150,6 @@ const StockHistory = () => {
     return ["all", ...Array.from(map.values()).sort()];
   }, [history]);
 
-  /* ------------------ LIVE FILTERING ------------------ */
   useEffect(() => {
     let filtered = [...history];
 
@@ -164,44 +163,29 @@ const StockHistory = () => {
       );
     }
 
-    // ✅ Vendor filter (FIXED & NORMALIZED)
+    // ✅ Vendor filter
     if (selectedVendor !== "all") {
       const selected = selectedVendor.toLowerCase().trim();
-
       filtered = filtered.filter((r) => {
-        const vendor =
-          r.vendorName && r.vendorName.trim() !== ""
-            ? r.vendorName
-            : "Shop";
-
+        const vendor = r.vendorName && r.vendorName.trim() !== "" ? r.vendorName : "Shop";
         return vendor.toLowerCase().trim() === selected;
       });
     }
 
     // ✅ Date filter
     if (startDate || endDate) {
-      const startTime = startDate
-        ? new Date(startDate).getTime()
-        : -Infinity;
-      const endTime = endDate
-        ? new Date(endDate).getTime() +
-        24 * 60 * 60 * 1000 -
-        1
-        : Infinity;
-
+      const startTime = startDate ? new Date(startDate).getTime() : -Infinity;
+      const endTime = endDate ? new Date(endDate).getTime() + 24 * 60 * 60 * 1000 - 1 : Infinity;
       filtered = filtered.filter((r) => {
         const ts = getTimestampValue(r.date);
         return ts && ts >= startTime && ts <= endTime;
       });
     }
 
-    filtered.sort(
-      (a, b) =>
-        getTimestampValue(b.date) -
-        getTimestampValue(a.date)
-    );
+    filtered.sort((a, b) => getTimestampValue(b.date) - getTimestampValue(a.date));
 
     setFilteredHistory(filtered);
+    setCurrentPage(1); // Reset to first page on filter change
   }, [
     history,
     selectedProduct,
@@ -210,6 +194,23 @@ const StockHistory = () => {
     endDate,
     getTimestampValue,
   ]);
+
+  /* ------------------ PAGINATION LOGIC ------------------ */
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 50;
+
+  const totalPages = Math.ceil(filteredHistory.length / itemsPerPage);
+  const paginatedHistory = useMemo(() => {
+    const start = (currentPage - 1) * itemsPerPage;
+    return filteredHistory.slice(start, start + itemsPerPage);
+  }, [filteredHistory, currentPage, itemsPerPage]);
+
+  const handlePageChange = (newPage) => {
+    if (newPage >= 1 && newPage <= totalPages) {
+      setCurrentPage(newPage);
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    }
+  };
 
   const resetFilters = () => {
     setSearchParams({});
@@ -284,7 +285,7 @@ const StockHistory = () => {
           </thead>
 
           <tbody>
-            {filteredHistory.map((record) => {
+            {paginatedHistory.map((record) => {
               const unitPrice =
                 record.vendorPrice ||
                 record.productPrice ||
@@ -346,6 +347,29 @@ const StockHistory = () => {
             })}
           </tbody>
         </table>
+      )}
+
+      {/* ------------------ PAGINATION CONTROLS ------------------ */}
+      {totalPages > 1 && (
+        <div className="pagination">
+          <button
+            className="page-btn"
+            onClick={() => handlePageChange(currentPage - 1)}
+            disabled={currentPage === 1}
+          >
+            Previous
+          </button>
+          <span className="page-info">
+            Page {currentPage} of {totalPages}
+          </span>
+          <button
+            className="page-btn"
+            onClick={() => handlePageChange(currentPage + 1)}
+            disabled={currentPage === totalPages}
+          >
+            Next
+          </button>
+        </div>
       )}
     </div>
   );

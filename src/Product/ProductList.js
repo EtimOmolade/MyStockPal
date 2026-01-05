@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useMemo } from "react";
 import { Link } from "react-router-dom";
 import {
   collection,
@@ -148,6 +148,23 @@ function ProductList() {
     return isNaN(d.getTime()) ? "—" : d.toLocaleString();
   };
 
+  /* ------------------ PAGINATION LOGIC ------------------ */
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 20;
+
+  const totalPages = Math.ceil(products.length / itemsPerPage);
+  const paginatedProducts = useMemo(() => {
+    const start = (currentPage - 1) * itemsPerPage;
+    return products.slice(start, start + itemsPerPage);
+  }, [products, currentPage]);
+
+  const handlePageChange = (newPage) => {
+    if (newPage >= 1 && newPage <= totalPages) {
+      setCurrentPage(newPage);
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    }
+  };
+
   return (
     <div className="inventory-page">
       <h2>📦 Product Inventory</h2>
@@ -173,71 +190,100 @@ function ProductList() {
       {products.length === 0 ? (
         <p>No products found.</p>
       ) : (
-        <table className="inventory-table">
-          <thead>
-            <tr>
-              <th>Name</th>
-              <th>Stock</th>
-              <th>Sold (Today)</th>
-              <th className="hide-mobile">Damaged</th>
-              <th className="hide-mobile">Price</th>
-              <th className="hide-mobile">Revenue (Today)</th>
-              <th className="hide-mobile">Stock Added (Today)</th>
-              <th className="hide-mobile">Last Updated</th>
-              <th className="hide-mobile">Add Stock</th>
-              <th>Actions</th>
-            </tr>
-          </thead>
+        <>
+          <table className="inventory-table">
+            <thead>
+              <tr>
+                <th>Name</th>
+                <th>Stock</th>
+                <th>Sold (Today)</th>
+                <th className="hide-mobile">Damaged</th>
+                <th className="hide-mobile">Price</th>
+                <th className="hide-mobile">Revenue (Today)</th>
+                <th className="hide-mobile">Stock Added (Today)</th>
+                <th className="hide-mobile">Last Updated</th>
+                <th className="hide-mobile">Add Stock</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
 
-          <tbody>
-            {products.map((p) => {
-              const todayAdded = lastAdded[p.id] || 0;
-              const todaySold = dailySold[p.id] || 0;
-              const todayAmount = dailyAmounts[p.id] || 0;
+            <tbody>
+              {paginatedProducts.map((p) => {
+                const todayAdded = lastAdded[p.id] || 0;
+                const todaySold = dailySold[p.id] || 0;
+                const todayAmount = dailyAmounts[p.id] || 0;
 
-              return (
-                <tr key={p.id}>
-                  <td>{p.name}</td>
-                  <td>{p.total || 0}</td>
-                  <td>{todaySold}</td>
-                  <td className="hide-mobile">{p.damaged || 0}</td>
-                  <td className="hide-mobile">₦{p.price || "-"}</td>
-                  <td className="hide-mobile">₦{todayAmount.toLocaleString()}</td>
-                  <td className="hide-mobile">{todayAdded || "—"}</td>
-                  <td className="hide-mobile">{formatTimestamp(p.lastUpdated)}</td>
+                return (
+                  <tr key={p.id}>
+                    <td>{p.name}</td>
+                    <td>{p.total || 0}</td>
+                    <td>{todaySold}</td>
+                    <td className="hide-mobile">{p.damaged || 0}</td>
+                    <td className="hide-mobile">₦{p.price || "-"}</td>
+                    <td className="hide-mobile">
+                      ₦{todayAmount.toLocaleString()}
+                    </td>
+                    <td className="hide-mobile">{todayAdded || "—"}</td>
+                    <td className="hide-mobile">
+                      {formatTimestamp(p.lastUpdated)}
+                    </td>
 
-                  {/* ✅ Add stock input */}
-                  <td className="hide-mobile">
-                    <input
-                      type="number"
-                      placeholder="Qty"
-                      value={addQty[p.id] || ""}
-                      onChange={(e) =>
-                        setAddQty({ ...addQty, [p.id]: e.target.value })
-                      }
-                      style={{ width: "60px" }}
-                    />
-                    <button
-                      onClick={() => handleAddStock(p.id, p.name)}
-                      style={{ marginLeft: "5px" }}
-                    >
-                      Update
-                    </button>
-                  </td>
+                    {/* ✅ Add stock input */}
+                    <td className="hide-mobile">
+                      <input
+                        type="number"
+                        placeholder="Qty"
+                        value={addQty[p.id] || ""}
+                        onChange={(e) =>
+                          setAddQty({ ...addQty, [p.id]: e.target.value })
+                        }
+                        style={{ width: "60px" }}
+                      />
+                      <button
+                        onClick={() => handleAddStock(p.id, p.name)}
+                        style={{ marginLeft: "5px" }}
+                      >
+                        Update
+                      </button>
+                    </td>
 
-                  {/* ✅ Actions */}
-                  <td>
-                    <div className="action-buttons">
-                      <Link to={`/product/${p.id}`}>
-                        <button className="view-btn">View</button>
-                      </Link>
-                    </div>
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
+                    {/* ✅ Actions */}
+                    <td>
+                      <div className="action-buttons">
+                        <Link to={`/product/${p.id}`}>
+                          <button className="view-btn">View</button>
+                        </Link>
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+
+          {/* ------------------ PAGINATION CONTROLS ------------------ */}
+          {totalPages > 1 && (
+            <div className="pagination">
+              <button
+                className="page-btn"
+                onClick={() => handlePageChange(currentPage - 1)}
+                disabled={currentPage === 1}
+              >
+                Previous
+              </button>
+              <span className="page-info">
+                Page {currentPage} of {totalPages}
+              </span>
+              <button
+                className="page-btn"
+                onClick={() => handlePageChange(currentPage + 1)}
+                disabled={currentPage === totalPages}
+              >
+                Next
+              </button>
+            </div>
+          )}
+        </>
       )}
     </div>
   );
