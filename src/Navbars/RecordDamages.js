@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
-import { db } from "../firebase";
+import { db, auth } from "../firebase";
 import {
   collection,
   getDocs,
@@ -88,6 +88,7 @@ function RecordDamages() {
           product: currentData.name,
           action: "Damaged",
           quantity: qty,
+          recordedBy: auth.currentUser?.email || "Unknown",
           date: serverTimestamp(),
           note: `🧯 Damaged ${qty} ${quantityType}(s)`,
         });

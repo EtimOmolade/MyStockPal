@@ -10,7 +10,9 @@ import {
   query,
   where,
   serverTimestamp,
+  addDoc,
 } from "firebase/firestore";
+import { auth } from "../firebase";
 
 function ArchivedProducts() {
   const [archivedProducts, setArchivedProducts] = useState([]);
@@ -57,6 +59,18 @@ function ArchivedProducts() {
           archived: false,
           lastUpdated: serverTimestamp(),
         });
+
+        // ✅ Record in history
+        const productData = archivedProducts.find(p => p.id === id);
+        await addDoc(collection(db, "history"), {
+          productId: id,
+          product: productData?.name || "Unknown Product",
+          action: "Restored Product",
+          recordedBy: auth.currentUser?.email || "Unknown",
+          date: serverTimestamp(),
+          note: `Product restored to inventory`,
+        });
+
         setArchivedProducts((prev) => prev.filter((p) => p.id !== id));
         alert("✅ Product restored successfully!");
       } catch (error) {

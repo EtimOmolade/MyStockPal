@@ -112,8 +112,9 @@ const Dashboard = () => {
           if (r.action === "Sold" && r.quantity) {
             soldMap[pid] = (soldMap[pid] || 0) + r.quantity;
             const product = products.find((p) => p.id === pid);
-            if (product?.price) {
-              const earned = r.quantity * product.price;
+            if (product) {
+              // ✅ Use recorded transaction amount if available (handles vendor prices), else fallback to product price
+              const earned = r.amount ? Number(r.amount) : (r.quantity * (product.price || 0));
               revenueMap[pid] = (revenueMap[pid] || 0) + earned;
             }
           }
@@ -232,6 +233,7 @@ const Dashboard = () => {
             <tr>
               <th>Name</th>
               <th>Current Stock</th>
+              <th className="show-mobile action-buttons">View</th>
               <th className="hide-mobile">Sold</th>
               <th className="hide-mobile">Damaged</th>
               <th className="hide-mobile">Stock Added</th>
@@ -252,7 +254,7 @@ const Dashboard = () => {
                   <td className="hide-mobile">{p.sold || 0}</td>
                   <td className="hide-mobile">{p.damaged || 0}</td>
 
-                  <td  className="hide-mobile">
+                  <td className="hide-mobile">
                     {stock ? (
                       <>
                         {stock.quantity} units <br />

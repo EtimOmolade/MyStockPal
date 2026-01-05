@@ -19,6 +19,7 @@
 .env.production.local
 .env.production
 .env
+.firestore.rules
 
 npm-debug.log*
 yarn-debug.log*

@@ -9,6 +9,7 @@ import {
   serverTimestamp,
   collection,
   getDoc,
+  addDoc,
 } from "firebase/firestore";
 import { db, auth } from "../firebase";
 import { onAuthStateChanged } from "firebase/auth";
@@ -133,6 +134,16 @@ function ProductView() {
       await updateDoc(ref, {
         archived: true,
         lastUpdated: serverTimestamp(),
+      });
+
+      // ✅ Record in history
+      await addDoc(collection(db, "history"), {
+        productId: id,
+        product: product.name,
+        action: "Archived Product",
+        recordedBy: auth.currentUser?.email || "Unknown",
+        date: serverTimestamp(),
+        note: `Product archived`,
       });
 
       toast.success("✅ Product archived successfully!", {

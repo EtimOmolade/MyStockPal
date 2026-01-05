@@ -586,16 +586,7 @@ body.dark-mode .unarchive-btn:hover {
 
 /* 🧮 General Button Fixes */
 body.dark-mode .filter-button {
-  background: #2e2e35;
-  color: #ddd;
-  border: 1px solid #7b2cbf;
-  transition: 0.3s ease;
-}
-
-body.dark-mode .filter-button:hover {
-  background: #7b2cbf;
-  color: white;
-  box-shadow: 0 0 8px rgba(123, 44, 191, 0.4);
+  /* Handled above */
 }
 
 

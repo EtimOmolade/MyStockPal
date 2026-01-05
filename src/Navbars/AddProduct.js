@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { Link } from "react-router-dom";
-import { db } from "../firebase";
+import { db, auth } from "../firebase";
 import { collection, addDoc, serverTimestamp } from "firebase/firestore";
 
 const AddProduct = () => {
@@ -58,6 +58,7 @@ const AddProduct = () => {
         product: product.name,
         quantity: totalQty,
         action: "Stock Added",
+        recordedBy: auth.currentUser?.email || "Unknown",
         date: serverTimestamp(),
         note: `Added ${totalQty} units${product.hasPack ? ` (${itemsPerPack} per pack)` : ""
           } at ₦${unitPrice} each`,
@@ -150,7 +151,7 @@ const AddProduct = () => {
       <div style={{ marginTop: "20px", textAlign: "center" }}>
         <Link to="/">
           <button className="btn-primary" style={{ marginTop: "10px" }}>
-            ⬅ Back 
+            ⬅ Back
           </button>
         </Link>
       </div>

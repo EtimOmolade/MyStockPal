@@ -1,18 +1,17 @@
 import React, { useEffect, useState } from "react";
 import UserList from "./UserList";
+import VendorSalesReport from "./VendorSalesReport";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 
 function SuperAdminDashboard() {
+  const [activeTab, setActiveTab] = useState("dashboard");
   const location = useLocation();
   const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState("dashboard");
 
   useEffect(() => {
-    if (location.pathname.includes("/admin/users")) {
-      setActiveTab("users");
-    } else {
-      setActiveTab("dashboard");
-    }
+    const params = new URLSearchParams(location.search);
+    const tab = params.get("tab");
+    if (tab) setActiveTab(tab);
   }, [location]);
 
   return (
@@ -22,43 +21,37 @@ function SuperAdminDashboard() {
 
       <div className="admin-tabs" style={{ display: "flex", gap: "1rem", marginBottom: "2rem" }}>
         <button
-          onClick={() => navigate("/admin")}
+          onClick={() => navigate("/admin?tab=dashboard")}
           style={{
-            backgroundColor: activeTab === "dashboard" ? "#ff4d4d" : "#ddd",
-            color: activeTab === "dashboard" ? "white" : "black",
             padding: "10px 20px",
+            backgroundColor: activeTab === "dashboard" ? "#ff4d4d" : "#333",
+            color: "#fff",
             border: "none",
             borderRadius: "5px",
-            cursor: "pointer"
+            cursor: "pointer",
           }}
         >
-          Dashboard Overview
+          📊 Dashboard Overview
         </button>
-
         <button
-          onClick={() => navigate("/admin/users")}
+          onClick={() => navigate("/admin?tab=users")}
           style={{
-            backgroundColor: activeTab === "users" ? "#ff4d4d" : "#ddd",
-            color: activeTab === "users" ? "white" : "black",
             padding: "10px 20px",
+            backgroundColor: activeTab === "users" ? "#ff4d4d" : "#333",
+            color: "#fff",
             border: "none",
             borderRadius: "5px",
-            cursor: "pointer"
+            cursor: "pointer",
           }}
         >
-          User Management
+          👥 User Management
         </button>
         {/* Future tabs can go here */}
       </div>
 
       <div className="admin-content">
         {activeTab === "users" && <UserList />}
-        {activeTab === "dashboard" && (
-          <div>
-            <h3>Welcome to the Super Admin Dashboard</h3>
-            <p>Select a tab to manage different aspects of the system.</p>
-          </div>
-        )}
+        {activeTab === "dashboard" && <VendorSalesReport />}
       </div>
 
       <div style={{ marginTop: "2rem" }}>

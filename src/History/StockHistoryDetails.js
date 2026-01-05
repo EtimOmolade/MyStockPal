@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
 import { db, auth } from "../firebase";
-import { doc, getDoc, deleteDoc } from "firebase/firestore";
+import { doc, getDoc, deleteDoc, updateDoc, serverTimestamp } from "firebase/firestore";
 import { onAuthStateChanged } from "firebase/auth";
 import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
@@ -82,17 +82,47 @@ const StockHistoryDetails = () => {
       } each, total ₦${record.amount.toLocaleString()}`
       : "—";
 
-  // ✅ Delete History Record (Admin Only)
-  const handleDelete = async () => {
-    if (!window.confirm("Are you sure you want to DELETE this history record? This will NOT revert stock changes.")) return;
+  // ✅ Revert History Action (with stock restoration)
+  const handleRevert = async () => {
+    if (!window.confirm("ARE YOU SURE? This will REVERT the action and adjust stock levels back to their original state.")) return;
 
     try {
+      const productRef = doc(db, "products", record.productId);
+      const productSnap = await getDoc(productRef);
+
+      if (productSnap.exists()) {
+        const productData = productSnap.data();
+        let updateData = { lastUpdated: serverTimestamp() };
+
+        // Reverse based on action type
+        if (record.action === "Sold") {
+          updateData.total = (productData.total || 0) + record.quantity;
+          updateData.sold = (productData.sold || 0) - record.quantity;
+        } else if (record.action === "Stock Added") {
+          updateData.total = (productData.total || 0) - record.quantity;
+        } else if (record.action === "Damaged") {
+          updateData.total = (productData.total || 0) + record.quantity;
+          updateData.damaged = (productData.damaged || 0) - record.quantity;
+        } else if (record.action === "Archived Product") {
+          updateData.archived = false;
+        } else if (record.action === "Restored Product") {
+          updateData.archived = true;
+        } else if (record.action === "Edited Product") {
+          // Edits are complex to fully revert (names, prices), so we just delete the record
+          // or advise the user to edit manually.
+        }
+
+        await updateDoc(productRef, updateData);
+      } else {
+        toast.warn("Product no longer exists. Deleting history record only.");
+      }
+
       await deleteDoc(doc(db, "history", id));
-      toast.success("🗑️ Record deleted successfully");
+      toast.success("♻️ Action reverted and stock restored!");
       navigate("/history");
     } catch (error) {
-      console.error("Error deleting record:", error);
-      toast.error("❌ Failed to delete record");
+      console.error("Error reverting action:", error);
+      toast.error("❌ Failed to revert action");
     }
   };
 
@@ -141,6 +171,19 @@ const StockHistoryDetails = () => {
           <strong>Notes:</strong>{" "}
           {record.note || record.details || defaultNote}
         </p>
+
+        {userRole === "admin" && (
+          <div style={{ marginTop: "15px", paddingTop: "15px", borderTop: "1px solid #333", fontSize: "0.9rem" }}>
+            <p style={{ color: record.recordedBy ? "#d1c4e9" : "#666" }}>
+              <strong>Recorded By:</strong> {record.recordedBy || "Legacy Record (Pre-Audit)"}
+            </p>
+            {record.updatedBy && (
+              <p style={{ color: "#ffb6ff" }}>
+                <strong>Last Updated By:</strong> {record.updatedBy}
+              </p>
+            )}
+          </div>
+        )}
       </div>
 
       <div className="action-buttons" style={{ marginTop: "20px", display: "flex", gap: "10px" }}>
@@ -151,16 +194,19 @@ const StockHistoryDetails = () => {
             </Link>
             <button
               className="archive-btn"
-              onClick={handleDelete}
-              style={{ backgroundColor: "#d32f2f" }}
+              onClick={handleRevert}
+              style={{ backgroundColor: "#ff9800", color: "#000", fontWeight: "bold" }}
             >
-              Delete
+              ♻️ Revert Action
             </button>
           </>
         )}
-        <Link to="/history">
-          <button className="back-btn">⬅ Back</button>
-        </Link>
+        <button
+          className="back-btn"
+          onClick={() => navigate(-1)}
+        >
+          ⬅ Back
+        </button>
       </div>
     </div>
   );

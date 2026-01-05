@@ -19,6 +19,7 @@ import Signup from "./Authentication/Signup";
 import ProtectedRoute from "./Authentication/ProtectedRoute";
 import AdminRoute from "./Authentication/AdminRoute";
 import SuperAdminDashboard from "./SuperAdmin/SuperAdminDashboard";
+import RevenueFixer from "./SuperAdmin/RevenueFixer";
 import { auth, db } from "./firebase";
 import { signOut, onAuthStateChanged } from "firebase/auth";
 import { doc, getDoc } from "firebase/firestore";
@@ -27,9 +28,11 @@ function App() {
   const [darkMode, setDarkMode] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [userRole, setUserRole] = useState(null);
+  const [currentUser, setCurrentUser] = useState(null);
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
+      setCurrentUser(user);
       if (user) {
         const userDoc = await getDoc(doc(db, "users", user.uid));
         if (userDoc.exists()) {
@@ -73,9 +76,11 @@ function App() {
           <Link to="/damages" onClick={() => setMenuOpen(false)}>Record Damages</Link>
           <Link to="/archived-products" onClick={() => setMenuOpen(false)}>Archived Products</Link>
           <Link to="/history" onClick={() => setMenuOpen(false)}>History</Link>
-          <Link to="/dashboard" onClick={() => setMenuOpen(false)}>Dashboard</Link>
           {userRole === "admin" && (
-            <Link to="/admin" onClick={() => setMenuOpen(false)} style={{ color: "#ff4d4d", fontWeight: "bold" }}>Admin Panel</Link>
+            <>
+              <Link to="/dashboard" onClick={() => setMenuOpen(false)}>Dashboard</Link>
+              <Link to="/admin" onClick={() => setMenuOpen(false)} style={{ color: "#ff4d4d", fontWeight: "bold" }}>Admin Panel</Link>
+            </>
           )}
         </div>
 
@@ -83,21 +88,25 @@ function App() {
           {darkMode ? "🌞 Light Mode" : "🌙 Dark Mode"}
         </button>
 
-        <button className="theme-toggle" onClick={() => signOut(auth).then(() => alert("Logged out!"))}>
-          Logout
-        </button>
+        {currentUser && (
+          <button className="theme-toggle" onClick={() => signOut(auth).then(() => alert("Logged out!"))}>
+            Logout
+          </button>
+        )}
       </nav>
 
       <Routes>
         <Route path="/login" element={<Login />} />
         <Route path="/signup" element={<Signup />} />
 
+
         {/* Super Admin Route */}
         <Route path="/admin" element={<AdminRoute><SuperAdminDashboard /></AdminRoute>} />
         <Route path="/admin/users" element={<AdminRoute><SuperAdminDashboard /></AdminRoute>} />
+        <Route path="/admin/fix-revenue" element={<AdminRoute><RevenueFixer /></AdminRoute>} />
 
         <Route path="/" element={<ProtectedRoute><ProductList /></ProtectedRoute>} />
-        <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+        <Route path="/dashboard" element={<AdminRoute><Dashboard /></AdminRoute>} />
         <Route path="/add-product" element={<ProtectedRoute><AddProduct /></ProtectedRoute>} />
         <Route path="/edit/:id" element={<ProtectedRoute><EditProduct /></ProtectedRoute>} />
         <Route path="/sales" element={<ProtectedRoute><RecordSales /></ProtectedRoute>} />

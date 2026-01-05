@@ -5,18 +5,51 @@ import React, {
   useCallback,
 } from "react";
 import { db } from "../firebase";
-import { collection, getDocs } from "firebase/firestore";
-import { Link } from "react-router-dom";
+import { auth } from "../firebase";
+import { collection, getDocs, doc, getDoc } from "firebase/firestore";
+import { onAuthStateChanged } from "firebase/auth";
+import { Link, useSearchParams } from "react-router-dom";
 
 const StockHistory = () => {
   const [history, setHistory] = useState([]);
   const [filteredHistory, setFilteredHistory] = useState([]);
   const [products, setProducts] = useState([]);
+  const [userRole, setUserRole] = useState(null); // Added state
 
-  const [selectedProduct, setSelectedProduct] = useState("all");
-  const [selectedVendor, setSelectedVendor] = useState("all");
-  const [startDate, setStartDate] = useState("");
-  const [endDate, setEndDate] = useState("");
+  /* ------------------ URL PARAMS FOR PERSISTENCE ------------------ */
+  const [searchParams, setSearchParams] = useSearchParams();
+
+  const selectedProduct = searchParams.get("product") || "all";
+  const selectedVendor = searchParams.get("vendor") || "all";
+  const startDate = searchParams.get("startDate") || "";
+  const endDate = searchParams.get("endDate") || "";
+
+  const updateParam = (key, value) => {
+    setSearchParams((prev) => {
+      const newParams = new URLSearchParams(prev);
+      if (value && value !== "all") {
+        newParams.set(key, value);
+      } else {
+        newParams.delete(key);
+      }
+      return newParams;
+    });
+  };
+
+  /* ------------------ FETCH USER ROLE ------------------ */
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, async (user) => {
+      if (user) {
+        const userDoc = await getDoc(doc(db, "users", user.uid));
+        if (userDoc.exists()) {
+          setUserRole(userDoc.data().role);
+        }
+      } else {
+        setUserRole(null);
+      }
+    });
+    return () => unsubscribe();
+  }, []);
 
   /* ------------------ DATE HELPERS ------------------ */
   const parseToDate = useCallback((value) => {
@@ -179,11 +212,7 @@ const StockHistory = () => {
   ]);
 
   const resetFilters = () => {
-    setSelectedProduct("all");
-    setSelectedVendor("all");
-    setStartDate("");
-    setEndDate("");
-    setFilteredHistory([...history]);
+    setSearchParams({});
   };
 
   return (
@@ -194,9 +223,7 @@ const StockHistory = () => {
       <div className="filter-container filter-grid">
         <select
           value={selectedProduct}
-          onChange={(e) =>
-            setSelectedProduct(e.target.value)
-          }
+          onChange={(e) => updateParam("product", e.target.value)}
         >
           <option value="all">All Products</option>
           {products.map((p) => (
@@ -208,9 +235,7 @@ const StockHistory = () => {
 
         <select
           value={selectedVendor}
-          onChange={(e) =>
-            setSelectedVendor(e.target.value)
-          }
+          onChange={(e) => updateParam("vendor", e.target.value)}
         >
           {vendors.map((v) => (
             <option key={v} value={v}>
@@ -222,13 +247,13 @@ const StockHistory = () => {
         <input
           type="date"
           value={startDate}
-          onChange={(e) => setStartDate(e.target.value)}
+          onChange={(e) => updateParam("startDate", e.target.value)}
         />
 
         <input
           type="date"
           value={endDate}
-          onChange={(e) => setEndDate(e.target.value)}
+          onChange={(e) => updateParam("endDate", e.target.value)}
         />
 
         <button
@@ -250,11 +275,11 @@ const StockHistory = () => {
               <th>Product</th>
               <th>Vendor</th>
               <th className="hide-mobile">Action</th>
-              <th className="hide-mobile">Vendor Price</th>
+              <th className="hide-mobile">Unit Price</th>
               <th className="hide-mobile">Qty</th>
               <th className="hide-mobile">Payment</th>
               <th className="hide-mobile">Notes</th>
-              <th>View</th>
+              {userRole === "admin" && <th className="hide-mobile">User</th>}
             </tr>
           </thead>
 
@@ -287,9 +312,7 @@ const StockHistory = () => {
                     {record.action || "—"}
                   </td>
                   <td className="hide-mobile">
-                    {record.vendorPrice
-                      ? `₦${record.vendorPrice.toLocaleString()}`
-                      : "-"}
+                    ₦{unitPrice.toLocaleString()}
                   </td>
                   <td className="hide-mobile">
                     {record.quantity ?? 0}
@@ -303,13 +326,21 @@ const StockHistory = () => {
                       defaultNote}
                   </td>
 
-                  <td>
-                    <Link to={`/stock-history/${record.id}`}>
-                      <button className="view-btn" style={{ padding: "0.5rem 1rem", fontSize: "0.9rem" }}>
-                        View
-                      </button>
-                    </Link>
-                  </td>
+                  {userRole === "admin" && (
+                    <td className="hide-mobile" style={{ fontSize: "0.85rem", color: record.recordedBy ? "#d1c4e9" : "#666" }}>
+                      {record.recordedBy ? record.recordedBy.split('@')[0] : "Legacy"}
+                    </td>
+                  )}
+
+                  {userRole === "admin" && (
+                    <td>
+                      <Link to={`/stock-history/${record.id}`}>
+                        <button className="view-btn" style={{ padding: "0.5rem 1rem", fontSize: "0.9rem" }}>
+                          View
+                        </button>
+                      </Link>
+                    </td>
+                  )}
                 </tr>
               );
             })}

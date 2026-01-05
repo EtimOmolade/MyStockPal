@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
-import { db } from "../firebase";
+import { db, auth } from "../firebase";
 import { doc, getDoc, updateDoc } from "firebase/firestore";
 import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
@@ -64,7 +64,8 @@ function HistoryEdit() {
         vendorName: formData.vendorName,
         vendorPrice: Number(formData.vendorPrice),
         note: formData.note,
-        payment: formData.payment
+        payment: formData.payment,
+        updatedBy: auth.currentUser?.email || "Unknown"
       });
       toast.success("✅ History updated successfully");
       setTimeout(() => navigate(`/stock-history/${id}`), 1000);

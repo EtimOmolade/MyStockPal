@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
-import { db } from "../firebase";
+import { db, auth } from "../firebase";
 import {
   collection,
   getDocs,
@@ -31,12 +31,39 @@ function RecordSales() {
   const [paymentMethod, setPaymentMethod] = useState("");
   const [totalAmount, setTotalAmount] = useState(0);
 
+  // Store unique vendor names for dropdown
+  const [existingVendors, setExistingVendors] = useState([]);
+  const [isNewVendor, setIsNewVendor] = useState(false);
+
   useEffect(() => {
     const fetchProducts = async () => {
       const snapshot = await getDocs(collection(db, "products"));
       setProducts(snapshot.docs.map((d) => ({ id: d.id, ...d.data() })));
     };
     fetchProducts();
+  }, []);
+
+  // Fetch existing vendors from history
+  useEffect(() => {
+    const fetchVendors = async () => {
+      try {
+        const snapshot = await getDocs(collection(db, "history"));
+        const vendors = new Set();
+        snapshot.docs.forEach((doc) => {
+          const data = doc.data();
+          if (data.forVendor && data.vendorName) {
+            const cleanName = data.vendorName.trim();
+            if (cleanName) {
+              vendors.add(cleanName);
+            }
+          }
+        });
+        setExistingVendors(Array.from(vendors).sort());
+      } catch (error) {
+        console.error("Error fetching vendors:", error);
+      }
+    };
+    fetchVendors();
   }, []);
 
   const handleAddProduct = () => {
@@ -109,7 +136,7 @@ function RecordSales() {
       const quantity =
         updated[index].saleType === "pack"
           ? Number(updated[index].quantity || 0) *
-            (product.itemsPerPack || 1)
+          (product.itemsPerPack || 1)
           : Number(updated[index].quantity || 0);
 
       updated[index].amount =
@@ -169,7 +196,7 @@ function RecordSales() {
           saleType: item.saleType,
 
           forVendor: isVendorSale === "yes",
-          vendorName: isVendorSale === "yes" ? vendorName : "",
+          vendorName: isVendorSale === "yes" ? vendorName.trim() : "",
           vendorPrice:
             isVendorSale === "yes" ? Number(item.vendorPrice) : 0,
 
@@ -177,14 +204,24 @@ function RecordSales() {
           amount: item.amount,
           payment: paymentMethod,
           action: "Sold",
+          recordedBy: auth.currentUser?.email || "Unknown",
           date: serverTimestamp(),
         });
       }
 
       alert("✅ Sale recorded successfully");
 
+      // Update local vendor list if it's a new vendor
+      if (isVendorSale === "yes" && vendorName) {
+        const cleanName = vendorName.trim();
+        if (!existingVendors.includes(cleanName)) {
+          setExistingVendors(prev => [...prev, cleanName].sort());
+        }
+      }
+
       setSelectedProducts([{ ...emptyRow }]);
       setIsVendorSale(null);
+      setIsNewVendor(false); // Reset to dropdown view
       setVendorName("");
       setPaymentMethod("");
       setTotalAmount(0);
@@ -225,12 +262,75 @@ function RecordSales() {
         {isVendorSale === "yes" && (
           <>
             <label>Vendor Name</label>
-            <input
-              type="text"
-              value={vendorName}
-              onChange={(e) => setVendorName(e.target.value)}
-              required
-            />
+            {!isNewVendor ? (
+              <div style={{ display: "flex", gap: "10px" }}>
+                <select
+                  value={vendorName}
+                  onChange={(e) => setVendorName(e.target.value)}
+                  required
+                  style={{ flex: 1 }}
+                >
+                  <option value="">-- Select Vendor --</option>
+                  {existingVendors.map((vendor, index) => (
+                    <option key={index} value={vendor}>
+                      {vendor}
+                    </option>
+                  ))}
+                </select>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsNewVendor(true);
+                    setVendorName("");
+                  }}
+                  className="btn-secondary"
+                  style={{
+                    whiteSpace: "nowrap",
+                    width: "auto",
+                    padding: "0 15px",
+                    background: "#28a745",
+                    color: "white",
+                    border: "none",
+                    borderRadius: "5px",
+                    cursor: "pointer"
+                  }}
+                  title="Add New Vendor"
+                >
+                  + New
+                </button>
+              </div>
+            ) : (
+              <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
+                <input
+                  type="text"
+                  value={vendorName}
+                  onChange={(e) => setVendorName(e.target.value)}
+                  placeholder="Enter new vendor name"
+                  required
+                  autoFocus
+                  style={{ flex: 1 }}
+                />
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsNewVendor(false);
+                    setVendorName("");
+                  }}
+                  style={{
+                    padding: "10px",
+                    background: "#6c757d",
+                    color: "white",
+                    border: "none",
+                    cursor: "pointer",
+                    borderRadius: "5px",
+                    whiteSpace: "nowrap"
+                  }}
+                  title="Switch to dropdown"
+                >
+                  Select Existing
+                </button>
+              </div>
+            )}
           </>
         )}
 
@@ -349,7 +449,7 @@ function RecordSales() {
           </button>
         </Link>
       </div>
-      
+
     </div>
   );
 }

@@ -8,7 +8,7 @@ import {
   serverTimestamp,
   addDoc,
 } from "firebase/firestore";
-import { db } from "../firebase";
+import { db, auth } from "../firebase";
 
 function ProductList() {
   const [products, setProducts] = useState([]);
@@ -76,8 +76,8 @@ function ProductList() {
 
           if (record.action === "Sold") {
             const product = products.find((p) => p.id === record.productId);
-            const price = product?.price || 0;
-            const amount = record.quantity * price;
+            // ✅ Use the actual recorded amount from the sale (handles vendor prices correctly)
+            const amount = record.amount ? Number(record.amount) : (record.quantity * (product?.price || 0));
 
             if (!dailySoldMap[record.productId]) dailySoldMap[record.productId] = 0;
             dailySoldMap[record.productId] += record.quantity;
@@ -127,6 +127,7 @@ function ProductList() {
         productName: name,
         quantity: qty,
         action: "Stock Added",
+        recordedBy: auth.currentUser?.email || "Unknown",
         date: serverTimestamp(),
         note: `Added ${qty} units`,
       });
