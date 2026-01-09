@@ -11,6 +11,7 @@ const AddProduct = () => {
     itemsPerPack: "", // ✅ new field
     hasPack: false, // ✅ to know if the product has packs
   });
+  const [loading, setLoading] = useState(false);
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
@@ -27,6 +28,8 @@ const AddProduct = () => {
       alert("Please fill in all required fields!");
       return;
     }
+
+    setLoading(true);
 
     // ✅ Parse numeric values safely
     const totalQty = parseInt(product.total, 10);
@@ -75,6 +78,8 @@ const AddProduct = () => {
     } catch (error) {
       console.error("Error adding product:", error);
       alert("❌ Could not add product, please try again.");
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -143,8 +148,8 @@ const AddProduct = () => {
           </>
         )}
 
-        <button type="submit" className="btn-primary">
-          Add Product
+        <button type="submit" className="btn-primary" disabled={loading}>
+          {loading ? "Adding..." : "Add Product"}
         </button>
       </form>
 

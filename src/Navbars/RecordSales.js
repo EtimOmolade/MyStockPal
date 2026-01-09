@@ -3,11 +3,13 @@ import { Link } from "react-router-dom";
 import { db, auth } from "../firebase";
 import {
   collection,
+  onSnapshot,
   getDocs,
   doc,
   updateDoc,
   addDoc,
   serverTimestamp,
+  increment,
 } from "firebase/firestore";
 
 const emptyRow = {
@@ -34,13 +36,17 @@ function RecordSales() {
   // Store unique vendor names for dropdown
   const [existingVendors, setExistingVendors] = useState([]);
   const [isNewVendor, setIsNewVendor] = useState(false);
+  const [loading, setLoading] = useState(false);
 
+  // ✅ Fetch products in real-time
   useEffect(() => {
-    const fetchProducts = async () => {
-      const snapshot = await getDocs(collection(db, "products"));
-      setProducts(snapshot.docs.map((d) => ({ id: d.id, ...d.data() })));
-    };
-    fetchProducts();
+    const unsubscribe = onSnapshot(collection(db, "products"), (snapshot) => {
+      const sorted = snapshot.docs
+        .map((d) => ({ id: d.id, ...d.data() }))
+        .sort((a, b) => (a.name || "").localeCompare(b.name || ""));
+      setProducts(sorted);
+    }, (err) => console.error("Error fetching products:", err));
+    return () => unsubscribe();
   }, []);
 
   // Fetch existing vendors from history
@@ -168,6 +174,8 @@ function RecordSales() {
       return;
     }
 
+    setLoading(true);
+
     try {
       for (const item of selectedProducts) {
         const product = products.find((p) => p.id === item.productId);
@@ -178,14 +186,15 @@ function RecordSales() {
             ? item.quantity * (product.itemsPerPack || 1)
             : Number(item.quantity);
 
-        if (qty > product.total) {
-          alert(`Not enough stock for ${product.name}`);
+        const currentStock = Number(product.total || 0);
+        if (qty > currentStock) {
+          alert(`❌ Not enough stock for ${product.name}.\nRequested: ${qty}\nAvailable: ${currentStock}`);
           return;
         }
 
         await updateDoc(doc(db, "products", product.id), {
-          total: product.total - qty,
-          sold: (product.sold || 0) + qty,
+          total: increment(-qty),
+          sold: increment(qty),
           lastUpdated: serverTimestamp(),
         });
 
@@ -228,6 +237,8 @@ function RecordSales() {
     } catch (err) {
       console.error(err);
       alert("❌ Error recording sale");
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -439,7 +450,9 @@ function RecordSales() {
 
         <h3>Total Amount: ₦{totalAmount.toLocaleString()}</h3>
 
-        <button type="submit">Record Sale</button>
+        <button type="submit" disabled={loading}>
+          {loading ? "Recording..." : "Record Sale"}
+        </button>
       </form>
 
       <div style={{ textAlign: "center" }}>

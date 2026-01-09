@@ -13,7 +13,7 @@ function VendorSalesReport() {
     const fetchVendorHistory = async () => {
       setLoading(true);
       try {
-        const q = query(collection(db, "history"), where("forVendor", "==", true));
+        const q = query(collection(db, "history"));
         const snapshot = await getDocs(q);
         const data = snapshot.docs.map(doc => ({
           id: doc.id,
@@ -34,13 +34,17 @@ function VendorSalesReport() {
     const groups = {};
 
     history.forEach(item => {
+      // Only include Sales and Damages in this report
+      if (item.action !== "Sold" && item.action !== "Damaged") return;
+
       let dateKey = "Unknown";
       if (item.date) {
         const d = item.date.seconds ? new Date(item.date.seconds * 1000) : new Date(item.date);
         dateKey = d.toISOString().split('T')[0];
       }
 
-      const vendorKey = item.vendorName || "Unknown Vendor";
+      // If no vendorName, classify as "Shop"
+      const vendorKey = (item.vendorName && item.vendorName.trim() !== "") ? item.vendorName : "Shop";
 
       if (startDate && dateKey < startDate) return;
       if (endDate && dateKey > endDate) return;
@@ -48,10 +52,15 @@ function VendorSalesReport() {
 
       const key = `${dateKey}_${vendorKey}`;
       if (!groups[key]) {
-        groups[key] = { date: dateKey, vendor: vendorKey, total: 0, items: 0 };
+        groups[key] = { date: dateKey, vendor: vendorKey, total: 0, items: 0, damaged: 0 };
       }
-      groups[key].total += Number(item.amount || 0);
-      groups[key].items += Number(item.quantity || 0);
+
+      if (item.action === "Sold") {
+        groups[key].total += Number(item.amount || 0);
+        groups[key].items += Number(item.quantity || 0);
+      } else if (item.action === "Damaged") {
+        groups[key].damaged += Number(item.quantity || 0);
+      }
     });
 
     return Object.values(groups).sort((a, b) => b.date.localeCompare(a.date) || a.vendor.localeCompare(b.vendor));
@@ -68,7 +77,13 @@ function VendorSalesReport() {
 
   // Unique Vendors for Dropdown
   const uniqueVendors = useMemo(() => {
-    const vendors = new Set(history.map(item => item.vendorName || "Unknown Vendor"));
+    const vendors = new Set();
+    history.forEach(item => {
+      if (item.action === "Sold" || item.action === "Damaged") {
+        const name = (item.vendorName && item.vendorName.trim() !== "") ? item.vendorName : "Shop";
+        vendors.add(name);
+      }
+    });
     return Array.from(vendors).sort();
   }, [history]);
 
@@ -167,12 +182,13 @@ function VendorSalesReport() {
               <th>Vendor Name</th>
               <th>Revenue (₦)</th>
               <th>Items Sold</th>
+              <th>Items Damaged</th>
             </tr>
           </thead>
           <tbody>
             {groupedData.length === 0 ? (
               <tr>
-                <td colSpan="4" style={{ padding: "40px", opacity: 0.5 }}>
+                <td colSpan="5" style={{ padding: "40px", opacity: 0.5 }}>
                   No data matches your search filters.
                 </td>
               </tr>
@@ -180,9 +196,12 @@ function VendorSalesReport() {
               groupedData.map((row, idx) => (
                 <tr key={idx}>
                   <td style={{ fontWeight: "500" }}>{formatDateDisplay(row.date)}</td>
-                  <td style={{ color: "#ffeb3b", fontWeight: "600" }}>{row.vendor}</td>
+                  <td style={{ color: "#bb86fc", fontWeight: "600" }}>{row.vendor}</td>
                   <td style={{ color: "#4CAF50", fontWeight: "bold" }}>₦{row.total.toLocaleString()}</td>
                   <td style={{ opacity: 0.7 }}>{row.items} items</td>
+                  <td style={{ color: row.damaged > 0 ? "#ff5252" : "inherit", opacity: row.damaged > 0 ? 1 : 0.5 }}>
+                    {row.damaged > 0 ? `${row.damaged} damaged` : "—"}
+                  </td>
                 </tr>
               ))
             )}
@@ -205,8 +224,11 @@ function VendorSalesReport() {
                 <span style={{ fontSize: "0.85rem", color: "#888" }}>{formatDateDisplay(row.date)}</span>
                 <span style={{ fontSize: "0.85rem", color: "#888" }}>{row.items} items</span>
               </div>
-              <p style={{ margin: "5px 0", fontSize: "1.1rem", color: "#ffeb3b", fontWeight: "600" }}>{row.vendor}</p>
+              <p style={{ margin: "5px 0", fontSize: "1.1rem", color: "#bb86fc", fontWeight: "600" }}>{row.vendor}</p>
               <p style={{ margin: "5px 0", fontSize: "1.2rem", color: "#4CAF50", fontWeight: "bold" }}>₦{row.total.toLocaleString()}</p>
+              {row.damaged > 0 && (
+                <p style={{ margin: "5px 0", fontSize: "0.9rem", color: "#ff5252" }}>⚠ {row.damaged} items damaged</p>
+              )}
             </div>
           ))
         )}

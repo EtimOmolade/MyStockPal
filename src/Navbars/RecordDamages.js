@@ -9,6 +9,7 @@ import {
   addDoc,
   serverTimestamp,
   getDoc,
+  increment,
 } from "firebase/firestore";
 
 function RecordDamages() {
@@ -26,11 +27,10 @@ function RecordDamages() {
   const fetchProducts = async () => {
     try {
       const querySnapshot = await getDocs(collection(db, "products"));
-      const productList = querySnapshot.docs.map((doc) => ({
-        id: doc.id,
-        ...doc.data(),
-      }));
-      setProducts(productList);
+      const sorted = querySnapshot.docs
+        .map((doc) => ({ id: doc.id, ...doc.data() }))
+        .sort((a, b) => (a.name || "").localeCompare(b.name || ""));
+      setProducts(sorted);
     } catch (error) {
       console.error("🔥 Error fetching products:", error);
     }
@@ -61,8 +61,9 @@ function RecordDamages() {
       qty *= product.itemsPerPack;
     }
 
-    if (qty > product.total) {
-      alert("❌ Quantity exceeds available stock!");
+    const currentStock = Number(product.total || 0);
+    if (qty > currentStock) {
+      alert(`❌ Quantity exceeds available stock!\nRequested: ${qty}\nAvailable: ${currentStock}`);
       return;
     }
 
@@ -77,8 +78,8 @@ function RecordDamages() {
 
         // ✅ Update Firestore product
         await updateDoc(productRef, {
-          damaged: (currentData.damaged || 0) + qty,
-          total: (currentData.total || 0) - qty,
+          damaged: increment(qty),
+          total: increment(-qty),
           lastUpdated: serverTimestamp(),
         });
 

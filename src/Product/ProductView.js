@@ -94,9 +94,8 @@ function ProductView() {
 
           if (recordDate.getTime() === todayDate.getTime()) {
             soldToday += record.quantity || 0;
-            revenueToday +=
-              (record.quantity || 0) *
-              (product.price || product.sellingPrice || 0);
+            // ✅ Use recorded amount, fallback to current price
+            revenueToday += record.amount ? Number(record.amount) : (record.quantity || 0) * (product.price || 0);
           }
         }
       });

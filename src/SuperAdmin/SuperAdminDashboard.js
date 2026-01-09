@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import UserList from "./UserList";
 import VendorSalesReport from "./VendorSalesReport";
+import StockIntegrity from "./StockIntegrity";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 
 function SuperAdminDashboard() {
@@ -46,12 +47,26 @@ function SuperAdminDashboard() {
         >
           👥 User Management
         </button>
+        <button
+          onClick={() => navigate("/admin?tab=integrity")}
+          style={{
+            padding: "10px 20px",
+            backgroundColor: activeTab === "integrity" ? "#ff4d4d" : "#333",
+            color: "#fff",
+            border: "none",
+            borderRadius: "5px",
+            cursor: "pointer",
+          }}
+        >
+          🔍 Stock Integrity
+        </button>
         {/* Future tabs can go here */}
       </div>
 
       <div className="admin-content">
         {activeTab === "users" && <UserList />}
         {activeTab === "dashboard" && <VendorSalesReport />}
+        {activeTab === "integrity" && <StockIntegrity />}
       </div>
 
       <div style={{ marginTop: "2rem" }}>

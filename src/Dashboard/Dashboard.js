@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import CountUp from "react-countup";
 import { db } from "../firebase";
-import { collection, getDocs, query, orderBy } from "firebase/firestore";
+import { collection, onSnapshot, query, orderBy } from "firebase/firestore";
 import { Link } from "react-router-dom";
 
 // Helper — format Firestore timestamp
@@ -34,6 +34,8 @@ const getRecentMonths = (count = 12) => {
 const Dashboard = () => {
   const [products, setProducts] = useState([]);
   const [revenues, setRevenues] = useState({});
+  const [soldStats, setSoldStats] = useState({});
+  const [damagedStats, setDamagedStats] = useState({});
   const [stockDetails, setStockDetails] = useState({});
   const [filter, setFilter] = useState("monthly");
   const [selectedMonth, setSelectedMonth] = useState(() => {
@@ -43,123 +45,111 @@ const Dashboard = () => {
 
   const monthOptions = getRecentMonths(12);
 
-  // ✅ Fetch all products
+  // ✅ Fetch products in real-time
   useEffect(() => {
-    const fetchProducts = async () => {
-      try {
-        const snapshot = await getDocs(collection(db, "products"));
-        const list = snapshot.docs.map((doc) => ({
-          id: doc.id,
-          ...doc.data(),
-        }));
-        setProducts(list);
-      } catch (err) {
-        console.error("Error fetching products:", err);
-      }
-    };
-    fetchProducts();
+    const unsubscribe = onSnapshot(collection(db, "products"), (snapshot) => {
+      const list = snapshot.docs.map((doc) => ({
+        id: doc.id,
+        ...doc.data(),
+      }));
+      setProducts(list);
+    }, (err) => console.error("Error fetching products:", err));
+    return () => unsubscribe();
   }, []);
 
-  // ✅ Fetch and filter history
+  // ✅ Fetch and filter history in real-time
   useEffect(() => {
-    const fetchHistory = async () => {
-      try {
-        const q = query(collection(db, "history"), orderBy("date", "desc"));
-        const snapshot = await getDocs(q);
-        const records = snapshot.docs.map((doc) => ({
-          id: doc.id,
-          ...doc.data(),
-        }));
+    if (products.length === 0) return;
 
-        const now = new Date();
-        const [year, month] = selectedMonth.split("-").map(Number);
+    const unsubscribe = onSnapshot(query(collection(db, "history"), orderBy("date", "desc")), (snapshot) => {
+      const records = snapshot.docs.map((doc) => ({
+        id: doc.id,
+        ...doc.data(),
+      }));
 
-        const filteredRecords = records.filter((r) => {
-          if (!r.date?.seconds) return false;
-          const recordDate = new Date(r.date.seconds * 1000);
+      const now = new Date();
+      const [year, month] = selectedMonth.split("-").map(Number);
 
-          if (filter === "daily") {
-            return recordDate.toDateString() === now.toDateString();
-          } else if (filter === "weekly") {
-            // Monday–Sunday current week
-            const firstDayOfWeek = new Date(now);
-            const dayOfWeek = now.getDay(); // Sunday=0
-            const distanceToMonday = (dayOfWeek + 6) % 7;
-            firstDayOfWeek.setDate(now.getDate() - distanceToMonday);
-            firstDayOfWeek.setHours(0, 0, 0, 0);
-            return recordDate >= firstDayOfWeek && recordDate <= now;
-          } else if (filter === "monthly") {
-            return (
-              recordDate.getFullYear() === year &&
-              recordDate.getMonth() + 1 === month
-            );
-          } else if (filter === "yearly") {
-            return recordDate.getFullYear() === now.getFullYear();
-          } else {
-            return true; // all time
+      const filteredRecords = records.filter((r) => {
+        if (!r.date?.seconds) return false;
+        const recordDate = new Date(r.date.seconds * 1000);
+
+        if (filter === "daily") {
+          return recordDate.toDateString() === now.toDateString();
+        } else if (filter === "weekly") {
+          const firstDayOfWeek = new Date(now);
+          const dayOfWeek = now.getDay();
+          const distanceToMonday = (dayOfWeek + 6) % 7;
+          firstDayOfWeek.setDate(now.getDate() - distanceToMonday);
+          firstDayOfWeek.setHours(0, 0, 0, 0);
+          return recordDate >= firstDayOfWeek && recordDate <= now;
+        } else if (filter === "monthly") {
+          return (
+            recordDate.getFullYear() === year &&
+            recordDate.getMonth() + 1 === month
+          );
+        } else if (filter === "yearly") {
+          return recordDate.getFullYear() === now.getFullYear();
+        } else {
+          return true;
+        }
+      });
+
+      const revenueMap = {};
+      const soldMap = {};
+      const damagedMap = {};
+      const stockAddedMap = {};
+
+      filteredRecords.forEach((r) => {
+        const pid = r.productId;
+        if (!pid) return;
+
+        if (r.action === "Sold") {
+          soldMap[pid] = (soldMap[pid] || 0) + Number(r.quantity || 0);
+          const product = products.find((p) => p.id === pid);
+          if (product) {
+            const earned = r.amount ? Number(r.amount) : (Number(r.quantity || 0) * (product.price || 0));
+            revenueMap[pid] = (revenueMap[pid] || 0) + earned;
           }
-        });
+        }
 
-        const revenueMap = {};
-        const soldMap = {};
-        const damagedMap = {};
-        const stockMap = {};
+        if (r.action === "Damaged") {
+          damagedMap[pid] = (damagedMap[pid] || 0) + Number(r.quantity || 0);
+        }
 
-        filteredRecords.forEach((r) => {
-          const pid = r.productId;
-          if (!pid) return;
+        if (r.action === "Stock Added" && !stockAddedMap[pid]) {
+          stockAddedMap[pid] = {
+            quantity: r.quantity,
+            date: r.date,
+          };
+        }
+      });
 
-          if (r.action === "Sold" && r.quantity) {
-            soldMap[pid] = (soldMap[pid] || 0) + r.quantity;
-            const product = products.find((p) => p.id === pid);
-            if (product) {
-              // ✅ Use recorded transaction amount if available (handles vendor prices), else fallback to product price
-              const earned = r.amount ? Number(r.amount) : (r.quantity * (product.price || 0));
-              revenueMap[pid] = (revenueMap[pid] || 0) + earned;
-            }
-          }
+      setStockDetails(stockAddedMap);
+      setRevenues(revenueMap);
+      setSoldStats(soldMap);
+      setDamagedStats(damagedMap);
+    });
 
-          if (r.action === "Damaged" && r.quantity) {
-            damagedMap[pid] = (damagedMap[pid] || 0) + r.quantity;
-          }
-
-          if (r.action === "Stock Added" && !stockMap[pid]) {
-            stockMap[pid] = {
-              quantity: r.quantity,
-              date: r.date,
-              note: r.note || "",
-            };
-          }
-        });
-
-        setStockDetails(stockMap);
-        setRevenues(revenueMap);
-
-        const updatedProducts = products.map((p) => ({
-          ...p,
-          total: p.total || 0,
-          sold: filter === "all" ? p.sold || 0 : soldMap[p.id] || 0,
-          damaged: filter === "all" ? p.damaged || 0 : damagedMap[p.id] || 0,
-        }));
-
-        setProducts(updatedProducts);
-      } catch (err) {
-        console.error("Error fetching history:", err);
-      }
-    };
-
-    if (products.length > 0) fetchHistory();
-  }, [filter, products, selectedMonth]);
+    return () => unsubscribe();
+  }, [filter, products.length, selectedMonth]);
 
   // ✅ Totals
   const totalStock = products.reduce((a, p) => a + (p.total || 0), 0);
-  const totalSold = products.reduce((a, p) => a + (p.sold || 0), 0);
-  const totalDamaged = products.reduce((a, p) => a + (p.damaged || 0), 0);
+  const totalSold = Object.values(soldStats).reduce((a, b) => a + b, 0);
+  const totalDamaged = Object.values(damagedStats).reduce((a, b) => a + b, 0);
   const totalRevenue = Object.values(revenues).reduce((a, b) => a + b, 0);
 
   return (
     <div className="dashboard-container">
-      <h2 className="dashboard-title">📊 Stock Overview</h2>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px" }}>
+        <h2 className="dashboard-title" style={{ margin: 0 }}>📊 Stock Overview</h2>
+        <Link to="/admin?tab=integrity">
+          <button className="view-btn" style={{ background: "#ff4d4d", color: "white", padding: "10px 15px" }}>
+            🔍 Run Stock Integrity Audit
+          </button>
+        </Link>
+      </div>
 
       {/* ✅ Filter Controls */}
       <div className="filter-controls">
@@ -243,16 +233,15 @@ const Dashboard = () => {
           <tbody>
             {products.map((p) => {
               const stock = stockDetails[p.id];
-              const remaining =
-                (p.total || 0) - ((p.sold || 0) + (p.damaged || 0));
+              const remaining = p.total || 0;
               return (
                 <tr key={p.id}>
                   <td>{p.name}</td>
                   <td>
                     {remaining < 0 ? 0 : remaining}
                   </td>
-                  <td className="hide-mobile">{p.sold || 0}</td>
-                  <td className="hide-mobile">{p.damaged || 0}</td>
+                  <td className="hide-mobile">{soldStats[p.id] || 0}</td>
+                  <td className="hide-mobile">{damagedStats[p.id] || 0}</td>
 
                   <td className="hide-mobile">
                     {stock ? (

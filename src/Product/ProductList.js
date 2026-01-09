@@ -7,6 +7,7 @@ import {
   updateDoc,
   serverTimestamp,
   addDoc,
+  increment,
 } from "firebase/firestore";
 import { db, auth } from "../firebase";
 
@@ -16,7 +17,9 @@ function ProductList() {
   const [dailySold, setDailySold] = useState({});
   const [addQty, setAddQty] = useState({});
   const [dailyAmounts, setDailyAmounts] = useState({});
+  const [dailyDamaged, setDailyDamaged] = useState({});
   const [totalRevenue, setTotalRevenue] = useState(0);
+  const [loading, setLoading] = useState({});
   const [today, setToday] = useState(() => {
     const d = new Date();
     d.setHours(0, 0, 0, 0);
@@ -59,6 +62,7 @@ function ProductList() {
 
       const dailyAddedMap = {};
       const dailySoldMap = {};
+      const dailyDamagedMap = {};
       const dailyAmountMap = {};
       let totalRevenueToday = 0;
 
@@ -87,11 +91,17 @@ function ProductList() {
 
             totalRevenueToday += amount;
           }
+
+          if (record.action === "Damaged") {
+            if (!dailyDamagedMap[record.productId]) dailyDamagedMap[record.productId] = 0;
+            dailyDamagedMap[record.productId] += record.quantity;
+          }
         }
       });
 
       setLastAdded(dailyAddedMap);
       setDailySold(dailySoldMap);
+      setDailyDamaged(dailyDamagedMap);
       setDailyAmounts(dailyAmountMap);
       setTotalRevenue(totalRevenueToday);
     });
@@ -106,11 +116,12 @@ function ProductList() {
       alert("Enter a valid quantity.");
       return;
     }
-
+    setLoading(prev => ({ ...prev, [id]: true }));
     try {
       const productRef = doc(db, "products", id);
       const product = products.find((p) => p.id === id);
       if (!product) {
+        setLoading(prev => ({ ...prev, [id]: false }));
         alert("Product not found.");
         return;
       }
@@ -118,18 +129,18 @@ function ProductList() {
       const newTotal = (product.total || 0) + qty;
 
       await updateDoc(productRef, {
-        total: newTotal,
+        total: increment(qty),
         lastUpdated: serverTimestamp(),
       });
 
       await addDoc(collection(db, "history"), {
         productId: id,
-        productName: name,
+        product: name,
         quantity: qty,
         action: "Stock Added",
         recordedBy: auth.currentUser?.email || "Unknown",
         date: serverTimestamp(),
-        note: `Added ${qty} units`,
+        note: `Added ${qty} units via Quick Update`,
       });
 
       setAddQty({ ...addQty, [id]: "" });
@@ -137,6 +148,8 @@ function ProductList() {
     } catch (error) {
       console.error("Error updating stock:", error);
       alert("❌ Failed to update stock. Check console for details.");
+    } finally {
+      setLoading(prev => ({ ...prev, [id]: false }));
     }
   };
 
@@ -197,7 +210,7 @@ function ProductList() {
                 <th>Name</th>
                 <th>Stock</th>
                 <th>Sold (Today)</th>
-                <th className="hide-mobile">Damaged</th>
+                <th className="hide-mobile">Damaged (Today)</th>
                 <th className="hide-mobile">Price</th>
                 <th className="hide-mobile">Revenue (Today)</th>
                 <th className="hide-mobile">Stock Added (Today)</th>
@@ -211,6 +224,7 @@ function ProductList() {
               {paginatedProducts.map((p) => {
                 const todayAdded = lastAdded[p.id] || 0;
                 const todaySold = dailySold[p.id] || 0;
+                const todayDamaged = dailyDamaged[p.id] || 0;
                 const todayAmount = dailyAmounts[p.id] || 0;
 
                 return (
@@ -218,7 +232,7 @@ function ProductList() {
                     <td>{p.name}</td>
                     <td>{p.total || 0}</td>
                     <td>{todaySold}</td>
-                    <td className="hide-mobile">{p.damaged || 0}</td>
+                    <td className="hide-mobile">{todayDamaged}</td>
                     <td className="hide-mobile">₦{p.price || "-"}</td>
                     <td className="hide-mobile">
                       ₦{todayAmount.toLocaleString()}
@@ -242,8 +256,9 @@ function ProductList() {
                       <button
                         onClick={() => handleAddStock(p.id, p.name)}
                         style={{ marginLeft: "5px" }}
+                        disabled={loading[p.id]}
                       >
-                        Update
+                        {loading[p.id] ? "..." : "Update"}
                       </button>
                     </td>
 

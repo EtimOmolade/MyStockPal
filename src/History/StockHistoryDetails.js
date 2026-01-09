@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
 import { db, auth } from "../firebase";
-import { doc, getDoc, deleteDoc, updateDoc, serverTimestamp } from "firebase/firestore";
+import { doc, getDoc, deleteDoc, updateDoc, serverTimestamp, increment } from "firebase/firestore";
 import { onAuthStateChanged } from "firebase/auth";
 import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
@@ -86,6 +86,11 @@ const StockHistoryDetails = () => {
   const handleRevert = async () => {
     if (!window.confirm("ARE YOU SURE? This will REVERT the action and adjust stock levels back to their original state.")) return;
 
+    if (!record.productId) {
+      toast.error("❌ Cannot revert: This record is missing a Product ID.");
+      return;
+    }
+
     try {
       const productRef = doc(db, "products", record.productId);
       const productSnap = await getDoc(productRef);
@@ -95,31 +100,40 @@ const StockHistoryDetails = () => {
         let updateData = { lastUpdated: serverTimestamp() };
 
         // Reverse based on action type
+        const qty = Number(record.quantity || 0);
+
         if (record.action === "Sold") {
-          updateData.total = (productData.total || 0) + record.quantity;
-          updateData.sold = (productData.sold || 0) - record.quantity;
+          updateData.total = increment(qty);
+          updateData.sold = increment(-qty);
         } else if (record.action === "Stock Added") {
-          updateData.total = (productData.total || 0) - record.quantity;
+          updateData.total = increment(-qty);
         } else if (record.action === "Damaged") {
-          updateData.total = (productData.total || 0) + record.quantity;
-          updateData.damaged = (productData.damaged || 0) - record.quantity;
+          updateData.total = increment(qty);
+          updateData.damaged = increment(-qty);
         } else if (record.action === "Archived Product") {
           updateData.archived = false;
         } else if (record.action === "Restored Product") {
           updateData.archived = true;
         } else if (record.action === "Edited Product") {
-          // Edits are complex to fully revert (names, prices), so we just delete the record
-          // or advise the user to edit manually.
+          if (record.oldTotal !== undefined) {
+            // Calculate the change that was made and reverse it
+            const totalDelta = Number(record.oldTotal) - qty;
+            updateData.total = increment(totalDelta);
+            updateData.price = Number(record.oldPrice);
+          } else {
+            toast.info("Older edit record detected. Please update stock manually.");
+            return;
+          }
         }
 
         await updateDoc(productRef, updateData);
       } else {
-        toast.warn("Product no longer exists. Deleting history record only.");
+        toast.warn("Product missing. Deleting history only.");
       }
 
       await deleteDoc(doc(db, "history", id));
-      toast.success("♻️ Action reverted and stock restored!");
-      navigate("/history");
+      toast.success(`✅ Reverted! ${record.action === "Sold" ? "Stock increased" : "Stock adjusted"} and record deleted.`);
+      setTimeout(() => navigate("/history"), 1500);
     } catch (error) {
       console.error("Error reverting action:", error);
       toast.error("❌ Failed to revert action");
