@@ -112,8 +112,8 @@ function ProductList() {
   // ✅ Add stock handler
   const handleAddStock = async (id, name) => {
     const qty = parseInt(addQty[id]);
-    if (!qty || qty <= 0) {
-      alert("Enter a valid quantity.");
+    if (qty === 0 || isNaN(qty)) {
+      alert("Enter a valid quantity (positive to add, negative to reduce).");
       return;
     }
     setLoading(prev => ({ ...prev, [id]: true }));
@@ -133,18 +133,19 @@ function ProductList() {
         lastUpdated: serverTimestamp(),
       });
 
+      const isAddition = qty > 0;
       await addDoc(collection(db, "history"), {
         productId: id,
         product: name,
-        quantity: qty,
-        action: "Stock Added",
+        quantity: Math.abs(qty),
+        action: isAddition ? "Stock Added" : "Stock Correction",
         recordedBy: auth.currentUser?.email || "Unknown",
         date: serverTimestamp(),
-        note: `Added ${qty} units via Quick Update`,
+        note: isAddition ? `Added ${qty} units via Quick Update` : `Reduced ${Math.abs(qty)} units (Correction)`,
       });
 
       setAddQty({ ...addQty, [id]: "" });
-      alert(`✅ Added ${qty} to ${name}. New total: ${newTotal}.`);
+      alert(`✅ Stock ${isAddition ? "added" : "reduced"} for ${name}. New total: ${newTotal}.`);
     } catch (error) {
       console.error("Error updating stock:", error);
       alert("❌ Failed to update stock. Check console for details.");
